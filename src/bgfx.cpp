@@ -2967,6 +2967,31 @@ namespace bgfx
 				}
 				break;
 
+			case CommandBuffer::CreateTextureFromNative:
+				{
+					BGFX_PROFILER_SCOPE("CreateTextureFromNative", 0xff2040ff);
+
+					TextureHandle handle;
+					_cmdbuf.read(handle);
+
+					uintptr_t ptr;
+					_cmdbuf.read(ptr);
+
+					const Memory* mem;
+					_cmdbuf.read(mem);
+
+					uint64_t flags;
+					_cmdbuf.read(flags);
+
+					uint8_t skip;
+					_cmdbuf.read(skip);
+
+					m_renderCtx->createTextureFromNative(handle, ptr, mem, flags, skip);
+
+					release(mem);
+				}
+				break;
+
 			case CommandBuffer::UpdateTexture:
 				{
 					BGFX_PROFILER_SCOPE("UpdateTexture", 0xff2040ff);
@@ -4440,6 +4465,41 @@ namespace bgfx
 		bx::write(&writer, tc);
 
 		return s_ctx->createTexture(mem, _flags, 0, NULL, BackbufferRatio::Count, NULL != _mem);
+	}
+
+	TextureHandle createTextureFromNative(const uintptr_t _ptr, uint16_t _width, uint16_t _height, bool _hasMips, uint16_t _numLayers, TextureFormat::Enum _format, uint16_t _flags)
+	{
+		BX_CHECK(NULL != _ptr, "_ptr can't be NULL");
+		bx::Error err;
+		isTextureValid(0, false, _numLayers, _format, _flags, &err);
+		BX_CHECK(err.isOk(), "%s (layers %d, format %s)"
+			, err.getMessage().getPtr()
+			, _numLayers
+			, getName(_format)
+			);
+		
+		const uint8_t numMips = calcNumMips(_hasMips, _width, _height);
+		_numLayers = bx::max<uint16_t>(_numLayers, 1);
+		
+		uint32_t size = sizeof(uint32_t) + sizeof(TextureCreate);
+		const Memory* mem = alloc(size);
+		
+		bx::StaticMemoryBlockWriter writer(mem->data, mem->size);
+		uint32_t magic = BGFX_CHUNK_MAGIC_TEX;
+		bx::write(&writer, magic);
+		
+		TextureCreate tc;
+		tc.m_width = _width;
+		tc.m_height = _height;
+		tc.m_depth = 0;
+		tc.m_numLayers = _numLayers;
+		tc.m_numMips = numMips;
+		tc.m_format = _format;
+		tc.m_cubeMap = false;
+		tc.m_mem = NULL;
+		bx::write(&writer, tc);
+		
+		return s_ctx->createTextureFromNative(_ptr, mem, _flags, 0, NULL, BackbufferRatio::Count, false);
 	}
 
 	void setName(TextureHandle _handle, const char* _name, int32_t _len)

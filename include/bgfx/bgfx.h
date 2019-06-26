@@ -2754,6 +2754,29 @@ namespace bgfx
 		, const Memory* _mem = NULL
 		);
 
+	/// Create texture from native
+	///
+	/// @param[in] _ptr  IDirect3DBaseTexture9 on D3D9, ID3D11ShaderResourceView on D3D11). On OpenGL/OpenGL ES it is GLuint. On Metal it is id<MTLTexture>.
+	/// @param[in] _flags Texture creation (see `BGFX_TEXTURE_*`.), and sampler (see `BGFX_SAMPLER_*`)
+	///   flags. Default texture sampling mode is linear, and wrap mode is repeat.
+	///   - `BGFX_SAMPLER_[U/V/W]_[MIRROR/CLAMP]` - Mirror or clamp to edge wrap
+	///     mode.
+	///   - `BGFX_SAMPLER_[MIN/MAG/MIP]_[POINT/ANISOTROPIC]` - Point or anisotropic
+	///     sampling.
+	///
+	/// @param[in] _skip Skip top level mips when parsing texture.
+	/// @param[out] _info When non-`NULL` is specified it returns parsed texture information.
+	/// @returns Texture handle.
+	TextureHandle createTextureFromNative(
+		const uintptr_t _ptr
+		, uint16_t _width
+		, uint16_t _height
+		, bool _hasMips
+		, uint16_t _numLayers
+		, TextureFormat::Enum _format
+		, uint16_t _flags = BGFX_TEXTURE_NONE | BGFX_SAMPLER_NONE
+		 );
+
 	/// Update 2D texture.
 	///
 	/// @param[in] _handle Texture handle.

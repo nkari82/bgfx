@@ -1607,6 +1607,10 @@ namespace bgfx { namespace d3d12
 			return m_textures[_handle.idx].create(_mem, _flags, _skip);
 		}
 
+		void createTextureFromNative(TextureHandle /*_handle*/, const uintptr_t /*_ptr*/, const Memory* /*_mem*/, uint64_t /*_flags*/, uint8_t /*_skip*/) override
+		{
+		}
+
 		void updateTextureBegin(TextureHandle /*_handle*/, uint8_t /*_side*/, uint8_t /*_mip*/) override
 		{
 		}

@@ -787,6 +787,7 @@ namespace bgfx
 			CreateDynamicVertexBuffer,
 			UpdateDynamicVertexBuffer,
 			CreateShader,
+			CreateTextureFromNative,
 			CreateProgram,
 			CreateTexture,
 			UpdateTexture,
@@ -2787,6 +2788,7 @@ constexpr uint64_t kSortKeyComputeProgramMask  = uint64_t(BGFX_CONFIG_MAX_PROGRA
 		virtual void createProgram(ProgramHandle _handle, ShaderHandle _vsh, ShaderHandle _fsh) = 0;
 		virtual void destroyProgram(ProgramHandle _handle) = 0;
 		virtual void* createTexture(TextureHandle _handle, const Memory* _mem, uint64_t _flags, uint8_t _skip) = 0;
+		virtual void createTextureFromNative(TextureHandle _handle, const uintptr_t _ptr, const Memory* _mem, uint64_t _flags, uint8_t _skip) = 0;
 		virtual void updateTextureBegin(TextureHandle _handle, uint8_t _side, uint8_t _mip) = 0;
 		virtual void updateTexture(TextureHandle _handle, uint8_t _side, uint8_t _mip, const Rect& _rect, uint16_t _z, uint16_t _depth, uint16_t _pitch, const Memory* _mem) = 0;
 		virtual void updateTextureEnd() = 0;
@@ -4180,6 +4182,85 @@ constexpr uint64_t kSortKeyComputeProgramMask  = uint64_t(BGFX_CONFIG_MAX_PROGRA
 			return handle;
 		}
 
+		BGFX_API_FUNC(TextureHandle createTextureFromNative(const uintptr_t _ptr, const Memory* _mem, uint64_t _flags, uint8_t _skip, TextureInfo* _info, BackbufferRatio::Enum _ratio, bool _immutable))
+		{
+			BGFX_MUTEX_SCOPE(m_resourceApiLock);
+			
+			TextureInfo ti;
+			if (NULL == _info)
+			{
+				_info = &ti;
+			}
+			
+			bimg::ImageContainer imageContainer;
+			if (bimg::imageParse(imageContainer, _mem->data, _mem->size))
+			{
+				calcTextureSize(*_info
+					, (uint16_t)imageContainer.m_width
+					, (uint16_t)imageContainer.m_height
+					, (uint16_t)imageContainer.m_depth
+					, imageContainer.m_cubeMap
+					, imageContainer.m_numMips > 1
+					, imageContainer.m_numLayers
+					, TextureFormat::Enum(imageContainer.m_format)
+					);
+			}
+			else
+			{
+				_info->format = TextureFormat::Unknown;
+				_info->storageSize = 0;
+				_info->width = 0;
+				_info->height = 0;
+				_info->depth = 0;
+				_info->numMips = 0;
+				_info->bitsPerPixel = 0;
+				_info->cubeMap = false;
+				
+				return BGFX_INVALID_HANDLE;
+			}
+			
+			TextureHandle handle = { m_textureHandle.alloc() };
+			BX_WARN(isValid(handle), "Failed to allocate texture handle.");
+			
+			if (!isValid(handle))
+			{
+				release(_mem);
+				return BGFX_INVALID_HANDLE;
+			}
+			
+			TextureRef & ref = m_textureRef[handle.idx];
+			ref.init(
+				_ratio
+				, _info->format
+				, _info->storageSize
+				, imageContainer.m_numMips
+				, imageContainer.m_numLayers
+				, 0 != (g_caps.supported & BGFX_CAPS_TEXTURE_DIRECT_ACCESS)
+				, _immutable
+				, 0 != (_flags & BGFX_TEXTURE_RT_MASK)
+				);
+			
+			if (ref.m_rt)
+			{
+				m_rtMemoryUsed += int64_t(ref.m_storageSize);
+			}
+			else
+			{
+				m_textureMemoryUsed += int64_t(ref.m_storageSize);
+			}
+			
+			CommandBuffer & cmdbuf = getCommandBuffer(CommandBuffer::CreateTextureFromNative);
+			cmdbuf.write(handle);
+			cmdbuf.write(_ptr);
+			cmdbuf.write(_mem);
+			cmdbuf.write(_flags);
+			cmdbuf.write(_skip);
+			
+			setDebugName(convert(handle));
+			
+			return handle;
+		}
+		
 		BGFX_API_FUNC(void setName(TextureHandle _handle, const bx::StringView& _name) )
 		{
 			BGFX_MUTEX_SCOPE(m_resourceApiLock);
