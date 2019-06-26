@@ -2141,14 +2141,29 @@ namespace bgfx { namespace d3d11
 			}
 			m_occlusionQuery.preReset();
 
+			if (NULL != g_platformData.nwh)
+			{
+				if (NULL != m_swapChain)
+					DX_RELEASE(m_backBufferColor, 0);
+			}
+			else
+			{
+				if (NULL != m_backBufferColor)
+				{
+					m_backBufferColor->Release();
+					m_backBufferColor = NULL;
+				}
+
+				if (NULL != m_backBufferDepthStencil)
+				{
+					m_backBufferDepthStencil->Release();
+					m_backBufferDepthStencil = NULL;
+				}
+			}
+
 			if (NULL == g_platformData.backBufferDS)
 			{
 				DX_RELEASE(m_backBufferDepthStencil, 0);
-			}
-
-			if (NULL != m_swapChain)
-			{
-				DX_RELEASE(m_backBufferColor, 0);
 			}
 
 			for (uint32_t ii = 0; ii < BX_COUNTOF(m_frameBuffers); ++ii)
@@ -2192,7 +2207,7 @@ namespace bgfx { namespace d3d11
 			}
 			m_occlusionQuery.postReset();
 
-			if (NULL == m_backBufferDepthStencil)
+			if (NULL != m_backBufferColor && NULL == m_backBufferDepthStencil)
 			{
 				D3D11_TEXTURE2D_DESC dsd;
 				dsd.Width  = m_scd.width;
@@ -4450,9 +4465,13 @@ namespace bgfx { namespace d3d11
 
 		s_renderD3D11->m_srvUavLru.invalidateWithParent(getHandle().idx);
 		DX_RELEASE(m_rt, 0);
-		DX_RELEASE(m_srv, 0);
 		DX_RELEASE(m_uav, 0);
-		if (0 == (m_flags & BGFX_SAMPLER_INTERNAL_SHARED) )
+		if (0 == (m_sharedFlags & SharedFlags::ShaderResourceView))
+		{
+			DX_RELEASE(m_srv, 0);
+		}
+		
+		if (0 == (m_sharedFlags & SharedFlags::Texture))
 		{
 			DX_RELEASE(m_ptr, 0);
 		}
@@ -4462,9 +4481,21 @@ namespace bgfx { namespace d3d11
 	{
 		destroy();
 		m_flags |= BGFX_SAMPLER_INTERNAL_SHARED;
-		m_ptr = (ID3D11Resource*)_ptr;
+		m_sharedFlags = SharedFlags::Texture;
 
-		s_renderD3D11->m_device->CreateShaderResourceView(m_ptr, NULL, &m_srv);
+		IUnknown * unkown = reinterpret_cast<IUnknown*>(_ptr);
+		if (SUCCEEDED(unkown->QueryInterface(IID_ID3D11ShaderResourceView, (void**)&m_srv)))
+		{
+			m_sharedFlags |= SharedFlags::ShaderResourceView;
+			m_srv->GetResource(&m_ptr);	
+			m_ptr->Release();
+			m_srv->Release();
+		}
+		else
+		{
+			m_ptr = (ID3D11Resource*)_ptr;
+			s_renderD3D11->m_device->CreateShaderResourceView(m_ptr, NULL, &m_srv);
+		}
 	}
 
 	void TextureD3D11::update(uint8_t _side, uint8_t _mip, const Rect& _rect, uint16_t _z, uint16_t _depth, uint16_t _pitch, const Memory* _mem)
@@ -5267,6 +5298,30 @@ namespace bgfx { namespace d3d11
 		||  updateResolution(_render->m_resolution) )
 		{
 			return;
+		}
+
+		if (NULL == g_platformData.nwh)
+		{
+			if (NULL != m_backBufferColor)
+			{
+				m_backBufferColor->Release();
+				m_backBufferColor = NULL;
+			}
+			
+			if (NULL != m_backBufferDepthStencil)
+			{
+				m_backBufferDepthStencil->Release();
+				m_backBufferDepthStencil = NULL;
+			}
+			
+			m_deviceCtx->OMGetRenderTargetsAndUnorderedAccessViews(
+				  1
+				, &m_backBufferColor
+				, &m_backBufferDepthStencil
+				, 1
+				, 0
+				, NULL
+				 );
 		}
 
 		if (_render->m_capture)

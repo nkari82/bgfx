@@ -6355,6 +6355,12 @@ BX_TRACE("%d, %d, %d, %s", _array, _srgb, _mipAutogen, getName(_format) );
 
 	void RendererContextGL::submit(Frame* _render, ClearQuad& _clearQuad, TextVideoMemBlitter& _textVideoMemBlitter)
 	{
+		if (NULL == g_platformData.nwh)
+		{
+			glGetIntegerv(GL_FRAMEBUFFER_BINDING, (GLint*)&m_backBufferFbo);
+			m_msaaBackBufferFbo = m_backBufferFbo;
+		}
+
 		if (_render->m_capture)
 		{
 			renderDocTriggerCapture();

@@ -273,12 +273,20 @@ namespace bgfx { namespace d3d11
 			TextureCube,
 		};
 
+		enum SharedFlags
+		{
+			None = 0,
+			Texture = 1,
+			ShaderResourceView = 2,
+		};
+
 		TextureD3D11()
 			: m_ptr(NULL)
 			, m_rt(NULL)
 			, m_srv(NULL)
 			, m_uav(NULL)
 			, m_numMips(0)
+			, m_sharedFlags(0)
 		{
 		}
 
@@ -317,6 +325,7 @@ namespace bgfx { namespace d3d11
 		uint8_t  m_requestedFormat;
 		uint8_t  m_textureFormat;
 		uint8_t  m_numMips;
+		uint8_t  m_sharedFlags;
 	};
 
 	struct FrameBufferD3D11
