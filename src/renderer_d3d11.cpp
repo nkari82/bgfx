@@ -665,6 +665,7 @@ namespace bgfx { namespace d3d11
 			, m_ags(NULL)
 			, m_featureLevel(D3D_FEATURE_LEVEL(0) )
 			, m_swapChain(NULL)
+			, m_msaaRt(NULL)
 			, m_lost(false)
 			, m_numWindows(0)
 			, m_device(NULL)
@@ -1029,7 +1030,7 @@ namespace bgfx { namespace d3d11
 					m_scd.ndt             = g_platformData.ndt;
 					m_scd.windowed        = true;
 
-					m_msaaRt = NULL;
+					
 
 					if (NULL != m_scd.nwh)
 					{
