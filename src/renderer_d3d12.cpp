@@ -654,6 +654,7 @@ namespace bgfx { namespace d3d12
 			, m_winPixEvent(NULL)
 			, m_featureLevel(D3D_FEATURE_LEVEL(0) )
 			, m_swapChain(NULL)
+			, m_msaaRt(NULL)
 			, m_wireframe(false)
 			, m_lost(false)
 			, m_maxAnisotropy(1)
@@ -959,8 +960,6 @@ namespace bgfx { namespace d3d12
 				m_scd.windowed        = true;
 
 				m_backBufferColorIdx = m_scd.bufferCount-1;
-
-				m_msaaRt = NULL;
 
 				if (NULL != m_scd.nwh)
 				{
