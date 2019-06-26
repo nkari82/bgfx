@@ -2206,6 +2206,10 @@ VK_IMPORT_DEVICE
 			return NULL;
 		}
 
+		void createTextureFromNative(TextureHandle /*_handle*/, const uintptr_t /*_ptr*/, const Memory* /*_mem*/, uint64_t /*_flags*/, uint8_t /*_skip*/) override
+		{
+		}
+
 		void updateTextureBegin(TextureHandle /*_handle*/, uint8_t /*_side*/, uint8_t /*_mip*/) override
 		{
 		}
