@@ -2149,24 +2149,9 @@ namespace bgfx { namespace d3d11
 			}
 			m_occlusionQuery.preReset();
 
-			if (NULL != g_platformData.nwh)
+			if (NULL != m_swapChain)
 			{
-				if (NULL != m_swapChain)
-					DX_RELEASE(m_backBufferColor, 0);
-			}
-			else
-			{
-				if (NULL != m_backBufferColor)
-				{
-					m_backBufferColor->Release();
-					m_backBufferColor = NULL;
-				}
-
-				if (NULL != m_backBufferDepthStencil)
-				{
-					m_backBufferDepthStencil->Release();
-					m_backBufferDepthStencil = NULL;
-				}
+				DX_RELEASE(m_backBufferColor, 0);
 			}
 
 			if (NULL == g_platformData.backBufferDS)
@@ -5310,26 +5295,20 @@ namespace bgfx { namespace d3d11
 
 		if (NULL == g_platformData.nwh)
 		{
-			if (NULL != m_backBufferColor)
-			{
-				m_backBufferColor->Release();
-				m_backBufferColor = NULL;
-			}
-			
-			if (NULL != m_backBufferDepthStencil)
-			{
-				m_backBufferDepthStencil->Release();
-				m_backBufferDepthStencil = NULL;
-			}
-			
 			m_deviceCtx->OMGetRenderTargetsAndUnorderedAccessViews(
-				  1
+				1
 				, &m_backBufferColor
 				, &m_backBufferDepthStencil
 				, 1
 				, 0
 				, NULL
-				 );
+			);
+
+			if(NULL != m_backBufferColor)
+				m_backBufferColor->Release();
+
+			if (NULL != m_backBufferDepthStencil)
+				m_backBufferDepthStencil->Release();
 		}
 
 		if (_render->m_capture)
@@ -6387,6 +6366,12 @@ namespace bgfx { namespace d3d11
 		}
 
 		m_deviceCtx->OMSetRenderTargets(1, s_zero.m_rtv, NULL);
+
+		if (NULL == g_platformData.nwh)
+		{
+			m_backBufferColor = NULL;
+			m_backBufferDepthStencil = NULL;
+		}
 
 		if (NULL != m_msaaRt)
 		{
