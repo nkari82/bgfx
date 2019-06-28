@@ -666,6 +666,7 @@ namespace bgfx { namespace d3d11
 			, m_ags(NULL)
 			, m_featureLevel(D3D_FEATURE_LEVEL(0) )
 			, m_swapChain(NULL)
+			, m_msaaRt(NULL)
 			, m_lost(false)
 			, m_numWindows(0)
 			, m_device(NULL)
@@ -1030,7 +1031,7 @@ namespace bgfx { namespace d3d11
 					m_scd.ndt             = g_platformData.ndt;
 					m_scd.windowed        = true;
 
-					m_msaaRt = NULL;
+					
 
 					if (NULL != m_scd.nwh)
 					{
@@ -1766,6 +1767,12 @@ namespace bgfx { namespace d3d11
 			return m_textures[_handle.idx].create(_mem, _flags, _skip);
 		}
 
+		void createTextureFromNative(TextureHandle _handle, const uintptr_t _ptr, const Memory* _mem, uint64_t _flags, uint8_t _skip) override
+		{
+			m_textures[_handle.idx].create(_mem, _flags, _skip);
+			m_textures[_handle.idx].overrideInternal(_ptr);
+		}
+
 		void updateTextureBegin(TextureHandle /*_handle*/, uint8_t /*_side*/, uint8_t /*_mip*/) override
 		{
 		}
@@ -2142,24 +2149,9 @@ namespace bgfx { namespace d3d11
 			}
 			m_occlusionQuery.preReset();
 
-			if (NULL != g_platformData.nwh)
+			if (NULL != m_swapChain)
 			{
-				if (NULL != m_swapChain)
-					DX_RELEASE(m_backBufferColor, 0);
-			}
-			else
-			{
-				if (NULL != m_backBufferColor)
-				{
-					m_backBufferColor->Release();
-					m_backBufferColor = NULL;
-				}
-
-				if (NULL != m_backBufferDepthStencil)
-				{
-					m_backBufferDepthStencil->Release();
-					m_backBufferDepthStencil = NULL;
-				}
+				DX_RELEASE(m_backBufferColor, 0);
 			}
 
 			if (NULL == g_platformData.backBufferDS)
@@ -5303,26 +5295,20 @@ namespace bgfx { namespace d3d11
 
 		if (NULL == g_platformData.nwh)
 		{
-			if (NULL != m_backBufferColor)
-			{
-				m_backBufferColor->Release();
-				m_backBufferColor = NULL;
-			}
-			
-			if (NULL != m_backBufferDepthStencil)
-			{
-				m_backBufferDepthStencil->Release();
-				m_backBufferDepthStencil = NULL;
-			}
-			
 			m_deviceCtx->OMGetRenderTargetsAndUnorderedAccessViews(
-				  1
+				1
 				, &m_backBufferColor
 				, &m_backBufferDepthStencil
 				, 1
 				, 0
 				, NULL
-				 );
+			);
+
+			if(NULL != m_backBufferColor)
+				m_backBufferColor->Release();
+
+			if (NULL != m_backBufferDepthStencil)
+				m_backBufferDepthStencil->Release();
 		}
 
 		if (_render->m_capture)
@@ -6380,6 +6366,12 @@ namespace bgfx { namespace d3d11
 		}
 
 		m_deviceCtx->OMSetRenderTargets(1, s_zero.m_rtv, NULL);
+
+		if (NULL == g_platformData.nwh)
+		{
+			m_backBufferColor = NULL;
+			m_backBufferDepthStencil = NULL;
+		}
 
 		if (NULL != m_msaaRt)
 		{
