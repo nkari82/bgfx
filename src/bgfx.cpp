@@ -2986,7 +2986,8 @@ namespace bgfx
 					uint8_t skip;
 					_cmdbuf.read(skip);
 
-					m_renderCtx->createTextureFromNative(handle, ptr, mem, flags, skip);
+					const TextureRef& ref = m_textureRef[handle.idx];
+					m_renderCtx->createTextureFromNative(handle, ref.m_refCount > 0 ? ptr : NULL, mem, flags, skip);
 
 					release(mem);
 				}
