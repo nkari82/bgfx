@@ -1,5 +1,5 @@
 #
-# Copyright 2011-2019 Branimir Karadzic. All rights reserved.
+# Copyright 2011-2020 Branimir Karadzic. All rights reserved.
 # License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
 #
 
@@ -44,13 +44,13 @@ projgen: ## Generate project files for all configurations.
 	$(GENIE) --with-tools --with-combined-examples --with-shared-lib --gcc=mingw-gcc       gmake
 	$(GENIE) --with-tools --with-combined-examples --with-shared-lib --gcc=linux-gcc       gmake
 	$(GENIE) --with-tools --with-combined-examples --with-shared-lib --gcc=osx             gmake
-	$(GENIE) --with-tools --with-combined-examples --with-shared-lib --xcode=osx           xcode8
-	$(GENIE) --with-tools --with-combined-examples --with-shared-lib --xcode=ios           xcode8
+	$(GENIE) --with-tools --with-combined-examples --with-shared-lib --xcode=osx           xcode9
+	$(GENIE) --with-tools --with-combined-examples --with-shared-lib --xcode=ios           xcode9
 	$(GENIE)              --with-combined-examples --with-shared-lib --gcc=freebsd         gmake
 	$(GENIE)              --with-combined-examples                   --gcc=android-arm     gmake
-	$(GENIE)              --with-combined-examples                   --gcc=android-arm64     gmake
+	$(GENIE)              --with-combined-examples                   --gcc=android-arm64   gmake
 	$(GENIE)              --with-combined-examples                   --gcc=android-x86     gmake
-	$(GENIE)              --with-combined-examples                   --gcc=asmjs           gmake
+	$(GENIE)              --with-examples                            --gcc=asmjs           gmake
 	$(GENIE)              --with-combined-examples                   --gcc=ios-arm         gmake
 	$(GENIE)              --with-combined-examples                   --gcc=ios-arm64       gmake
 	$(GENIE)              --with-combined-examples                   --gcc=ios-simulator   gmake
@@ -71,7 +71,7 @@ android-arm: android-arm-debug android-arm-release ## Build - Android ARM Debug 
 
 .build/projects/gmake-android-arm64:
 	$(GENIE) --gcc=android-arm64 gmake
-android-arm64-debug: .build/projects/gmake-android-arm ## Build - Android ARM64 Debug
+android-arm64-debug: .build/projects/gmake-android-arm64 ## Build - Android ARM64 Debug
 	$(MAKE) -R -C .build/projects/gmake-android-arm64 config=debug
 android-arm64-release: .build/projects/gmake-android-arm64 ## Build - Android ARM64 Release
 	$(MAKE) -R -C .build/projects/gmake-android-arm64 config=release

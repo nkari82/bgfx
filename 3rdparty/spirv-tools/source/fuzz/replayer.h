@@ -33,11 +33,11 @@ class Replayer {
     kComplete,
     kFailedToCreateSpirvToolsInterface,
     kInitialBinaryInvalid,
-    kInitialFactsInvalid,
+    kReplayValidationFailure,
   };
 
   // Constructs a replayer from the given target environment.
-  explicit Replayer(spv_target_env env);
+  explicit Replayer(spv_target_env env, bool validate_during_replay);
 
   // Disables copy/move constructor/assignment operations.
   Replayer(const Replayer&) = delete;

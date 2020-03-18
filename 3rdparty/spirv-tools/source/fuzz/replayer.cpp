@@ -18,6 +18,7 @@
 
 #include "source/fuzz/fact_manager.h"
 #include "source/fuzz/protobufs/spirvfuzz_protobufs.h"
+#include "source/fuzz/transformation.h"
 #include "source/fuzz/transformation_add_constant_boolean.h"
 #include "source/fuzz/transformation_add_constant_scalar.h"
 #include "source/fuzz/transformation_add_dead_break.h"
@@ -35,129 +36,19 @@
 namespace spvtools {
 namespace fuzz {
 
-namespace {
-
-// Returns true if and only if the precondition for |transformation| holds, with
-// respect to the given |context| and |fact_manager|.
-bool IsApplicable(const protobufs::Transformation& transformation,
-                  opt::IRContext* context, const FactManager& fact_manager) {
-  switch (transformation.transformation_case()) {
-    case protobufs::Transformation::TransformationCase::kAddConstantBoolean:
-      return transformation::IsApplicable(transformation.add_constant_boolean(),
-                                          context, fact_manager);
-    case protobufs::Transformation::TransformationCase::kAddConstantScalar:
-      return transformation::IsApplicable(transformation.add_constant_scalar(),
-                                          context, fact_manager);
-    case protobufs::Transformation::TransformationCase::kAddDeadBreak:
-      return transformation::IsApplicable(transformation.add_dead_break(),
-                                          context, fact_manager);
-    case protobufs::Transformation::TransformationCase::kAddTypeBoolean:
-      return transformation::IsApplicable(transformation.add_type_boolean(),
-                                          context, fact_manager);
-    case protobufs::Transformation::TransformationCase::kAddTypeFloat:
-      return transformation::IsApplicable(transformation.add_type_float(),
-                                          context, fact_manager);
-    case protobufs::Transformation::TransformationCase::kAddTypeInt:
-      return transformation::IsApplicable(transformation.add_type_int(),
-                                          context, fact_manager);
-    case protobufs::Transformation::TransformationCase::kAddTypePointer:
-      return transformation::IsApplicable(transformation.add_type_pointer(),
-                                          context, fact_manager);
-    case protobufs::Transformation::TransformationCase::kMoveBlockDown:
-      return transformation::IsApplicable(transformation.move_block_down(),
-                                          context, fact_manager);
-    case protobufs::Transformation::TransformationCase::
-        kReplaceBooleanConstantWithConstantBinary:
-      return transformation::IsApplicable(
-          transformation.replace_boolean_constant_with_constant_binary(),
-          context, fact_manager);
-    case protobufs::Transformation::TransformationCase::
-        kReplaceConstantWithUniform:
-      return transformation::IsApplicable(
-          transformation.replace_constant_with_uniform(), context,
-          fact_manager);
-    case protobufs::Transformation::TransformationCase::kSplitBlock:
-      return transformation::IsApplicable(transformation.split_block(), context,
-                                          fact_manager);
-    default:
-      assert(transformation.transformation_case() ==
-                 protobufs::Transformation::TRANSFORMATION_NOT_SET &&
-             "Unhandled transformation type.");
-      assert(false && "An unset transformation was encountered.");
-      return false;
-  }
-}
-
-// Requires that IsApplicable holds.  Applies |transformation| to the given
-// |context| and |fact_manager|.
-void Apply(const protobufs::Transformation& transformation,
-           opt::IRContext* context, FactManager* fact_manager) {
-  switch (transformation.transformation_case()) {
-    case protobufs::Transformation::TransformationCase::kAddConstantBoolean:
-      transformation::Apply(transformation.add_constant_boolean(), context,
-                            fact_manager);
-      break;
-    case protobufs::Transformation::TransformationCase::kAddConstantScalar:
-      transformation::Apply(transformation.add_constant_scalar(), context,
-                            fact_manager);
-      break;
-    case protobufs::Transformation::TransformationCase::kAddDeadBreak:
-      transformation::Apply(transformation.add_dead_break(), context,
-                            fact_manager);
-      break;
-    case protobufs::Transformation::TransformationCase::kAddTypeBoolean:
-      transformation::Apply(transformation.add_type_boolean(), context,
-                            fact_manager);
-      break;
-    case protobufs::Transformation::TransformationCase::kAddTypeFloat:
-      transformation::Apply(transformation.add_type_float(), context,
-                            fact_manager);
-      break;
-    case protobufs::Transformation::TransformationCase::kAddTypeInt:
-      transformation::Apply(transformation.add_type_int(), context,
-                            fact_manager);
-      break;
-    case protobufs::Transformation::TransformationCase::kAddTypePointer:
-      transformation::Apply(transformation.add_type_pointer(), context,
-                            fact_manager);
-      break;
-    case protobufs::Transformation::TransformationCase::kMoveBlockDown:
-      transformation::Apply(transformation.move_block_down(), context,
-                            fact_manager);
-      break;
-    case protobufs::Transformation::TransformationCase::
-        kReplaceBooleanConstantWithConstantBinary:
-      transformation::Apply(
-          transformation.replace_boolean_constant_with_constant_binary(),
-          context, fact_manager);
-      break;
-    case protobufs::Transformation::TransformationCase::
-        kReplaceConstantWithUniform:
-      transformation::Apply(transformation.replace_constant_with_uniform(),
-                            context, fact_manager);
-      break;
-    case protobufs::Transformation::TransformationCase::kSplitBlock:
-      transformation::Apply(transformation.split_block(), context,
-                            fact_manager);
-      break;
-    default:
-      assert(transformation.transformation_case() ==
-                 protobufs::Transformation::TRANSFORMATION_NOT_SET &&
-             "Unhandled transformation type.");
-      assert(false && "An unset transformation was encountered.");
-  }
-}
-
-}  // namespace
-
 struct Replayer::Impl {
-  explicit Impl(spv_target_env env) : target_env(env) {}
+  explicit Impl(spv_target_env env, bool validate)
+      : target_env(env), validate_during_replay(validate) {}
 
   const spv_target_env target_env;  // Target environment.
   MessageConsumer consumer;         // Message consumer.
+
+  const bool validate_during_replay;  // Controls whether the validator should
+                                      // be run after every replay step.
 };
 
-Replayer::Replayer(spv_target_env env) : impl_(MakeUnique<Impl>(env)) {}
+Replayer::Replayer(spv_target_env env, bool validate_during_replay)
+    : impl_(MakeUnique<Impl>(env, validate_during_replay)) {}
 
 Replayer::~Replayer() = default;
 
@@ -194,19 +85,43 @@ Replayer::ReplayerResultStatus Replayer::Run(
       impl_->target_env, impl_->consumer, binary_in.data(), binary_in.size());
   assert(ir_context);
 
-  FactManager fact_manager;
-  if (!fact_manager.AddFacts(initial_facts, ir_context.get())) {
-    return Replayer::ReplayerResultStatus::kInitialFactsInvalid;
+  // For replay validation, we track the last valid SPIR-V binary that was
+  // observed. Initially this is the input binary.
+  std::vector<uint32_t> last_valid_binary;
+  if (impl_->validate_during_replay) {
+    last_valid_binary = binary_in;
   }
 
+  FactManager fact_manager;
+  fact_manager.AddFacts(impl_->consumer, initial_facts, ir_context.get());
+
   // Consider the transformation proto messages in turn.
-  for (auto& transformation : transformation_sequence_in.transformation()) {
+  for (auto& message : transformation_sequence_in.transformation()) {
+    auto transformation = Transformation::FromMessage(message);
+
     // Check whether the transformation can be applied.
-    if (IsApplicable(transformation, ir_context.get(), fact_manager)) {
+    if (transformation->IsApplicable(ir_context.get(), fact_manager)) {
       // The transformation is applicable, so apply it, and copy it to the
       // sequence of transformations that were applied.
-      Apply(transformation, ir_context.get(), &fact_manager);
-      *transformation_sequence_out->add_transformation() = transformation;
+      transformation->Apply(ir_context.get(), &fact_manager);
+      *transformation_sequence_out->add_transformation() = message;
+
+      if (impl_->validate_during_replay) {
+        std::vector<uint32_t> binary_to_validate;
+        ir_context->module()->ToBinary(&binary_to_validate, false);
+
+        // Check whether the latest transformation led to a valid binary.
+        if (!tools.Validate(&binary_to_validate[0],
+                            binary_to_validate.size())) {
+          impl_->consumer(SPV_MSG_INFO, nullptr, {},
+                          "Binary became invalid during replay (set a "
+                          "breakpoint to inspect); stopping.");
+          return Replayer::ReplayerResultStatus::kReplayValidationFailure;
+        }
+
+        // The binary was valid, so it becomes the latest valid binary.
+        last_valid_binary = std::move(binary_to_validate);
+      }
     }
   }
 
