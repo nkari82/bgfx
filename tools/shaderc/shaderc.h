@@ -60,7 +60,7 @@ namespace bgfx
 #include <bx/string.h>
 #include <bx/hash.h>
 #include <bx/file.h>
-#include "../../src/vertexdecl.h"
+#include "../../src/vertexlayout.h"
 
 namespace bgfx
 {
@@ -87,7 +87,7 @@ namespace bgfx
 
 			uint32_t pos = m_pos;
 			const char* str = &m_str[pos];
-			const char* nl = bx::strFindNl(str).getPtr();
+			const char* nl = bx::strFindNl(bx::StringView(str, str + (m_size - pos))).getPtr();
 			pos += (uint32_t)(nl - str);
 
 			const char* eol = &m_str[pos];

@@ -157,47 +157,55 @@ bgfx::TextureHandle loadTextureWithUpdate(const char* _filePath, uint64_t _flags
 			BX_CHECK(1 >= imageContainer->m_depth, "3D Texture loading not supported");
 			BX_CHECK(1 == imageContainer->m_numLayers, "Texture Layer loading not supported");
 
-			if (!imageContainer->m_cubeMap &&
-				1 >= imageContainer->m_depth &&
-				1 == imageContainer->m_numLayers &&
-				bgfx::isTextureValid(0, false, imageContainer->m_numLayers, bgfx::TextureFormat::Enum(imageContainer->m_format), _flags)
-				)
+			if (!imageContainer->m_cubeMap
+			&&  1 >= imageContainer->m_depth
+			&&  1 == imageContainer->m_numLayers
+			&&  bgfx::isTextureValid(0, false, imageContainer->m_numLayers, bgfx::TextureFormat::Enum(imageContainer->m_format), _flags)
+			   )
 			{
 				handle = bgfx::createTexture2D(
-					uint16_t(imageContainer->m_width)
+					  uint16_t(imageContainer->m_width)
 					, uint16_t(imageContainer->m_height)
 					, 1 < imageContainer->m_numMips
 					, imageContainer->m_numLayers
 					, bgfx::TextureFormat::Enum(imageContainer->m_format)
 					, _flags
 					, NULL
-				);
+					);
 
 				uint32_t width = imageContainer->m_width;
 				uint32_t height = imageContainer->m_height;
 
 				for (uint8_t lod = 0, num = imageContainer->m_numMips; lod < num; ++lod)
 				{
-					if (width < 4 || height < 4) break;
-					width = bx::max(1u, width);
+					if (width < 4 || height < 4)
+					{
+						break;
+					}
+
+					width  = bx::max(1u, width);
 					height = bx::max(1u, height);
 
 					bimg::ImageMip mip;
+
 					if (bimg::imageGetRawData(*imageContainer, 0, lod, imageContainer->m_data, imageContainer->m_size, mip))
 					{
 						const uint8_t* mipData = mip.m_data;
 						uint32_t mipDataSize = mip.m_size;
 
-						bgfx::updateTexture2D(handle,
-							0,
-							lod,
-							0,
-							0,
-							uint16_t(width),
-							uint16_t(height),
-							bgfx::copy(mipData, mipDataSize));
+						bgfx::updateTexture2D(
+							  handle
+							, 0
+							, lod
+							, 0
+							, 0
+							, uint16_t(width)
+							, uint16_t(height)
+							, bgfx::copy(mipData, mipDataSize)
+							);
 					}
-					width >>= 1;
+
+					width  >>= 1;
 					height >>= 1;
 				}
 
@@ -254,7 +262,7 @@ public:
 			, 0
 			);
 
-		m_showDescriptions = false;
+		m_showDescriptions = true;
 
 		// Create vertex stream declaration.
 		PosTexcoordVertex::init();
@@ -336,15 +344,17 @@ public:
 		m_ibh = bgfx::createIndexBuffer(bgfx::makeRef(s_cubeIndices, sizeof(s_cubeIndices) ) );
 
 		// Create programs.
-		m_program    = loadProgram("vs_update", "fs_update");
-		m_programCmp = loadProgram("vs_update", "fs_update_cmp");
+		m_program       = loadProgram("vs_update", "fs_update");
+		m_programCmp    = loadProgram("vs_update", "fs_update_cmp");
 		m_program3d.idx = bgfx::kInvalidHandle;
+
 		if (m_texture3DSupported)
 		{
 			m_program3d = loadProgram("vs_update", "fs_update_3d");
 		}
 
 		m_programCompute.idx = bgfx::kInvalidHandle;
+
 		if (m_computeSupported)
 		{
 			m_programCompute = bgfx::createProgram( loadShader( "cs_update" ), true );
@@ -524,27 +534,21 @@ public:
 
 			showExampleDialog(this);
 
-			ImGui::SetNextWindowPos(
-				ImVec2(10, 270.0f)
-				, ImGuiCond_FirstUseEver
-			);
-			ImGui::SetNextWindowSize(
-				ImVec2(150.0f, 70.0f)
-				, ImGuiCond_FirstUseEver
-			);
+			ImGui::SetNextWindowPos (ImVec2( 10.0f, 270.0f), ImGuiCond_FirstUseEver);
+			ImGui::SetNextWindowSize(ImVec2(150.0f,  70.0f), ImGuiCond_FirstUseEver);
 
-			ImGui::Begin("Show descriptions"
+			ImGui::Begin(
+				  "Show descriptions"
 				, NULL
 				, ImGuiWindowFlags_NoResize
-			);
+				);
 
-			if (ImGui::Button(m_showDescriptions ? "ON" : "OFF"))
+			if (ImGui::Button(m_showDescriptions ? "On" : "Off"))
 			{
 				m_showDescriptions = !m_showDescriptions;
 			}
 
 			ImGui::End();
-
 
 			float borderColor[4] =
 			{
@@ -677,10 +681,11 @@ public:
 				bgfx::setViewFrameBuffer(viewId, m_textureCubeFaceFb[ii]);
 
 				bx::Vec3 color = bx::add(s_faceColors[ii], bx::sin(time*4.0f)*0.25f);
-				uint32_t colorRGB8 =
-						  uint32_t(bx::toUnorm(color.x, 255.0f) ) << 24
-						| uint32_t(bx::toUnorm(color.y, 255.0f) ) << 16
-						| uint32_t(bx::toUnorm(color.z, 255.0f) ) << 8;
+				uint32_t colorRGB8 = 0
+					| uint32_t(bx::toUnorm(color.x, 255.0f) ) << 24
+					| uint32_t(bx::toUnorm(color.y, 255.0f) ) << 16
+					| uint32_t(bx::toUnorm(color.z, 255.0f) ) <<  8
+					;
 
 				bgfx::setViewClear(viewId, BGFX_CLEAR_COLOR, colorRGB8);
 				bgfx::setViewRect(viewId, 0,0,512,512);
@@ -688,7 +693,8 @@ public:
 				bgfx::touch(viewId);
 			}
 
-			const char* descTextureCube[BX_COUNTOF(m_textureCube)] = {
+			static const char* descTextureCube[BX_COUNTOF(m_textureCube)] =
+			{
 					"updateTextureCube",
 					"blit",
 					"compute",
@@ -722,7 +728,6 @@ public:
 					ImGuiDescription(mtx[12], mtx[13], mtx[14], worldToScreen, descTextureCube[ii]);
 				}
 			}
-
 
 			// Set view and projection matrix for view 1.
 			const uint32_t numColumns = BX_COUNTOF(m_textures) / 2;
@@ -761,7 +766,8 @@ public:
 
 			const float xpos = -sizeX + margin + 1.0f;
 
-			const char* descTextures[] = {
+			static const char* descTextures[] =
+			{
 				"create\nbc1",
 				"create\nbc2",
 				"create\nbc3",
@@ -812,7 +818,8 @@ public:
 				ImGuiDescription(mtx[12], mtx[13], mtx[14], worldToScreen, descTextures[ii]);
 			}
 
-			const char* descTextures3d[] = {
+			static const char* descTextures3d[] =
+			{
 					"Tex3D R8",
 					"Tex3D R16F",
 					"Tex3D R32F",
@@ -842,7 +849,8 @@ public:
 				ImGuiDescription(mtx[12], mtx[13], mtx[14], worldToScreen, descTextures3d[ii]);
 			}
 
-			const char* descSampler[] = {
+			static const char* descSampler[] =
+			{
 					"U_CLAMP\nV_CLAMP",
 					"U_CLAMP\nV_WRAP",
 					"U_WRAP\nV_CLAMP",
