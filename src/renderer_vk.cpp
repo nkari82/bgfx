@@ -1707,7 +1707,7 @@ VK_IMPORT_DEVICE
 				if (NULL != vkCreateXlibSurfaceKHR)
 				{
 					VkXlibSurfaceCreateInfoKHR sci;
-					sci.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
+					sci.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
 					sci.pNext = NULL;
 					sci.flags  = 0;
 					sci.dpy    = (Display*)g_platformData.ndt;
@@ -2146,10 +2146,14 @@ VK_IMPORT_DEVICE
 				}
 			}
 
-			for (uint32_t ii = 0; ii < BX_COUNTOF(m_scratchBuffer); ++ii)
 			{
-				BX_TRACE("Create scratch buffer %d", ii);
-				m_scratchBuffer[ii].create(BGFX_CONFIG_MAX_DRAW_CALLS * 128, 1024);
+				const uint32_t align = uint32_t(m_deviceProperties.limits.nonCoherentAtomSize);
+				const uint32_t size = bx::strideAlign(BGFX_CONFIG_MAX_DRAW_CALLS * 128, align);
+				for (uint32_t ii = 0; ii < BX_COUNTOF(m_scratchBuffer); ++ii)
+				{
+					BX_TRACE("Create scratch buffer %d", ii);
+					m_scratchBuffer[ii].create(size, 1024);
+				}
 			}
 
 			errorState = ErrorState::DescriptorCreated;
@@ -2506,7 +2510,7 @@ VK_IMPORT_DEVICE
 				BX_FREE(g_allocator, m_uniforms[_handle.idx]);
 			}
 
-			uint32_t size = BX_ALIGN_16(g_uniformTypeSize[_type] * _num);
+			const uint32_t size = bx::alignUp(g_uniformTypeSize[_type] * _num, 16);
 			void* data = BX_ALLOC(g_allocator, size);
 			bx::memSet(data, 0, size);
 			m_uniforms[_handle.idx] = data;
@@ -5566,6 +5570,7 @@ VK_DESTROY
 		TextureVK& firstTexture = s_renderVK->m_textures[m_attachment[0].handle.idx];
 		::VkImageView textureImageViews[BGFX_CONFIG_MAX_FRAME_BUFFER_ATTACHMENTS];
 
+		m_depth.idx = bx::kInvalidHandle;
 		m_num = 0;
 		for (uint8_t ii = 0; ii < m_numAttachment; ++ii)
 		{
