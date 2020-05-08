@@ -4477,12 +4477,6 @@ namespace bgfx { namespace d3d11
 
 	void TextureD3D11::overrideInternal(uintptr_t _ptr)
 	{
-		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-		const bool readable = (m_srv != NULL);
-		if (readable) {
-			m_srv->GetDesc(&srvDesc);
-		}
-
 		destroy();
 		m_flags |= BGFX_SAMPLER_INTERNAL_SHARED;
 		m_sharedFlags = SharedFlags::Texture;
@@ -4497,6 +4491,12 @@ namespace bgfx { namespace d3d11
 		}
 		else
 		{
+			D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+			const bool readable = (m_srv != NULL);
+			if (readable) {
+				m_srv->GetDesc(&srvDesc);
+			}
+			
 			m_ptr = (ID3D11Resource*)_ptr;
 			if (readable) {
 				s_renderD3D11->m_device->CreateShaderResourceView(m_ptr, &srvDesc, &m_srv);
