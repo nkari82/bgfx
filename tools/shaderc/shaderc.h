@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2019 Branimir Karadzic. All rights reserved.
+ * Copyright 2011-2020 Branimir Karadzic. All rights reserved.
  * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
  */
 
@@ -60,7 +60,7 @@ namespace bgfx
 #include <bx/string.h>
 #include <bx/hash.h>
 #include <bx/file.h>
-#include "../../src/vertexdecl.h"
+#include "../../src/vertexlayout.h"
 
 namespace bgfx
 {
@@ -87,7 +87,7 @@ namespace bgfx
 
 			uint32_t pos = m_pos;
 			const char* str = &m_str[pos];
-			const char* nl = bx::strFindNl(str).getPtr();
+			const char* nl = bx::strFindNl(bx::StringView(str, str + (m_size - pos))).getPtr();
 			pos += (uint32_t)(nl - str);
 
 			const char* eol = &m_str[pos];
@@ -109,6 +109,7 @@ namespace bgfx
 
 #define BGFX_UNIFORM_FRAGMENTBIT UINT8_C(0x10)
 #define BGFX_UNIFORM_SAMPLERBIT  UINT8_C(0x20)
+#define BGFX_UNIFORM_MASK (BGFX_UNIFORM_FRAGMENTBIT|BGFX_UNIFORM_SAMPLERBIT)
 
 	const char* getUniformTypeName(UniformType::Enum _enum);
 	UniformType::Enum nameToUniformTypeEnum(const char* _name);
@@ -167,6 +168,7 @@ namespace bgfx
 
 	bool compileGLSLShader(const Options& _options, uint32_t _version, const std::string& _code, bx::WriterI* _writer);
 	bool compileHLSLShader(const Options& _options, uint32_t _version, const std::string& _code, bx::WriterI* _writer);
+	bool compileMetalShader(const Options& _options, uint32_t _version, const std::string& _code, bx::WriterI* _writer);
 	bool compilePSSLShader(const Options& _options, uint32_t _version, const std::string& _code, bx::WriterI* _writer);
 	bool compileSPIRVShader(const Options& _options, uint32_t _version, const std::string& _code, bx::WriterI* _writer);
 
