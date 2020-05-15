@@ -4525,7 +4525,7 @@ namespace bgfx
 		return s_ctx->createTexture(mem, _flags, 0, NULL, BackbufferRatio::Count, NULL != _mem);
 	}
 
-	TextureHandle createTextureFromNative(const uintptr_t _ptr, uint16_t _width, uint16_t _height, bool _hasMips, uint16_t _numLayers, TextureFormat::Enum _format, uint16_t _flags)
+	TextureHandle createTextureFromNative(const uintptr_t _ptr, uint16_t _width, uint16_t _height, bool _hasMips, uint16_t _numLayers, TextureFormat::Enum _format, uint64_t _flags)
 	{
 		BX_CHECK(NULL != _ptr, "_ptr can't be NULL");
 		bx::Error err;

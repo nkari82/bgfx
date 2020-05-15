@@ -2799,7 +2799,7 @@ namespace bgfx
 		, bool _hasMips
 		, uint16_t _numLayers
 		, TextureFormat::Enum _format
-		, uint16_t _flags = BGFX_TEXTURE_NONE | BGFX_SAMPLER_NONE
+		, uint64_t _flags = BGFX_TEXTURE_NONE | BGFX_SAMPLER_NONE
 		 );
 
 	/// Update 2D texture.
