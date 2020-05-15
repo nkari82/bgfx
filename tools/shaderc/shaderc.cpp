@@ -13,7 +13,7 @@ extern "C"
 #include <fpp.h>
 } // extern "C"
 
-#define BGFX_SHADER_BIN_VERSION 6
+#define BGFX_SHADER_BIN_VERSION 8
 #define BGFX_CHUNK_MAGIC_CSH BX_MAKEFOURCC('C', 'S', 'H', BGFX_SHADER_BIN_VERSION)
 #define BGFX_CHUNK_MAGIC_FSH BX_MAKEFOURCC('F', 'S', 'H', BGFX_SHADER_BIN_VERSION)
 #define BGFX_CHUNK_MAGIC_VSH BX_MAKEFOURCC('V', 'S', 'H', BGFX_SHADER_BIN_VERSION)
@@ -80,12 +80,6 @@ namespace bgfx
 		"texture3DProj",
 		"texture3DLod",
 		"texture3DProjLod",
-		NULL
-	};
-
-	static const char* s_OES_EGL_image_external[] =
-	{
-		"samplerExternalOES",
 		NULL
 	};
 
@@ -2182,11 +2176,6 @@ namespace bgfx
 									if (!bx::findIdentifierMatch(input, s_OES_texture_3D).isEmpty() )
 									{
 										bx::stringPrintf(code, "#extension GL_OES_texture_3D : enable\n");
-									}
-
-									if (!bx::findIdentifierMatch(input, s_OES_EGL_image_external).isEmpty() )
-									{
-										bx::stringPrintf(code, "#extension GL_OES_EGL_image_external : enable\n");
 									}
 
 									if (!bx::findIdentifierMatch(input, s_EXT_shadow_samplers).isEmpty() )
