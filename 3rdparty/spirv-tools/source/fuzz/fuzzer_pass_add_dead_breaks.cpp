@@ -77,9 +77,13 @@ void FuzzerPassAddDeadBreaks::Apply() {
           });
         }
 
+        // Make sure the module has a required boolean constant to be used in
+        // OpBranchConditional instruction.
+        auto break_condition = GetFuzzerContext()->ChooseEven();
+        FindOrCreateBoolConstant(break_condition);
+
         auto candidate_transformation = TransformationAddDeadBreak(
-            block.id(), merge_block->id(), GetFuzzerContext()->ChooseEven(),
-            std::move(phi_ids));
+            block.id(), merge_block->id(), break_condition, std::move(phi_ids));
         if (candidate_transformation.IsApplicable(
                 GetIRContext(), *GetTransformationContext())) {
           // Only consider a transformation as a candidate if it is applicable.
@@ -110,12 +114,9 @@ void FuzzerPassAddDeadBreaks::Apply() {
     candidate_transformations.erase(candidate_transformations.begin() + index);
     // Probabilistically decide whether to try to apply it vs. ignore it, in the
     // case that it is applicable.
-    if (transformation.IsApplicable(GetIRContext(),
-                                    *GetTransformationContext()) &&
-        GetFuzzerContext()->ChoosePercentage(
+    if (GetFuzzerContext()->ChoosePercentage(
             GetFuzzerContext()->GetChanceOfAddingDeadBreak())) {
-      transformation.Apply(GetIRContext(), GetTransformationContext());
-      *GetTransformations()->add_transformation() = transformation.ToMessage();
+      MaybeApplyTransformation(transformation);
     }
   }
 }

@@ -68,21 +68,21 @@ void FuzzerPassAddDeadContinues::Apply() {
         });
       }
 
+      // Make sure the module contains a boolean constant equal to
+      // |condition_value|.
+      bool condition_value = GetFuzzerContext()->ChooseEven();
+      FindOrCreateBoolConstant(condition_value);
+
       // Make a transformation to add a dead continue from this node; if the
       // node turns out to be inappropriate (e.g. by not being in a loop) the
       // precondition for the transformation will fail and it will be ignored.
       auto candidate_transformation = TransformationAddDeadContinue(
-          block.id(), GetFuzzerContext()->ChooseEven(), std::move(phi_ids));
+          block.id(), condition_value, std::move(phi_ids));
       // Probabilistically decide whether to apply the transformation in the
       // case that it is applicable.
-      if (candidate_transformation.IsApplicable(GetIRContext(),
-                                                *GetTransformationContext()) &&
-          GetFuzzerContext()->ChoosePercentage(
+      if (GetFuzzerContext()->ChoosePercentage(
               GetFuzzerContext()->GetChanceOfAddingDeadContinue())) {
-        candidate_transformation.Apply(GetIRContext(),
-                                       GetTransformationContext());
-        *GetTransformations()->add_transformation() =
-            candidate_transformation.ToMessage();
+        MaybeApplyTransformation(candidate_transformation);
       }
     }
   }

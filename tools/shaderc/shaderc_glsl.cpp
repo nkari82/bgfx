@@ -61,7 +61,7 @@ namespace bgfx { namespace glsl
 			}
 
 			printCode(_code.c_str(), line, start, end, column);
-			fprintf(stderr, "Error: %s\n", log);
+			bx::printf("Error: %s\n", log);
 			glslopt_shader_delete(shader);
 			glslopt_cleanup(ctx);
 			return false;
@@ -302,7 +302,7 @@ namespace bgfx { namespace glsl
 						}
 					}
 					char uniformName[256];
-					bx::strCopy(uniformName, parse.getLength() + 1, parse);					
+					bx::strCopy(uniformName, parse.getLength() + 1, parse);
 					un.name = uniformName;
 					const char* regIndexBeg = textureName.getPtr() + textureNameMark.getLength();
 					bx::StringView regIndex = bx::strFind(regIndexBeg, ")");
@@ -339,6 +339,8 @@ namespace bgfx { namespace glsl
 			bx::write(_writer, un.num);
 			bx::write(_writer, un.regIndex);
 			bx::write(_writer, un.regCount);
+			bx::write(_writer, un.texComponent);
+			bx::write(_writer, un.texDimension);
 
 			BX_TRACE("%s, %s, %d, %d, %d"
 				, un.name.c_str()

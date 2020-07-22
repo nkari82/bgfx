@@ -239,6 +239,10 @@ class Instruction : public utils::IntrusiveNodeBase<Instruction> {
     return dbg_line_insts_;
   }
 
+  const Instruction* dbg_line_inst() const {
+    return dbg_line_insts_.empty() ? nullptr : &dbg_line_insts_[0];
+  }
+
   // Clear line-related debug instructions attached to this instruction.
   void clear_dbg_line_insts() { dbg_line_insts_.clear(); }
 
@@ -291,9 +295,20 @@ class Instruction : public utils::IntrusiveNodeBase<Instruction> {
   // Sets DebugScope.
   inline void SetDebugScope(const DebugScope& scope);
   inline const DebugScope& GetDebugScope() const { return dbg_scope_; }
+  // Updates DebugInlinedAt of DebugScope and OpLine.
+  inline void UpdateDebugInlinedAt(uint32_t new_inlined_at);
+  inline uint32_t GetDebugInlinedAt() const {
+    return dbg_scope_.GetInlinedAt();
+  }
+  // Updates OpLine and DebugScope based on the information of |from|.
+  inline void UpdateDebugInfo(const Instruction* from);
   // Remove the |index|-th operand
   void RemoveOperand(uint32_t index) {
     operands_.erase(operands_.begin() + index);
+  }
+  // Insert an operand before the |index|-th operand
+  void InsertOperand(uint32_t index, Operand&& operand) {
+    operands_.insert(operands_.begin() + index, operand);
   }
 
   // The following methods are similar to the above, but are for in operands.
@@ -363,6 +378,10 @@ class Instruction : public utils::IntrusiveNodeBase<Instruction> {
   inline bool WhileEachInOperand(const std::function<bool(uint32_t*)>& f);
   inline bool WhileEachInOperand(
       const std::function<bool(const uint32_t*)>& f) const;
+
+  // Returns true if it's an OpBranchConditional instruction
+  // with branch weights.
+  bool HasBranchWeights() const;
 
   // Returns true if any operands can be labels
   inline bool HasLabels() const;
@@ -520,6 +539,11 @@ class Instruction : public utils::IntrusiveNodeBase<Instruction> {
   // OpenCLDebugInfo100InstructionsMax.
   OpenCLDebugInfo100Instructions GetOpenCL100DebugOpcode() const;
 
+  // Returns true if it is an OpenCL.DebugInfo.100 instruction.
+  bool IsOpenCL100DebugInstr() const {
+    return GetOpenCL100DebugOpcode() != OpenCLDebugInfo100InstructionsMax;
+  }
+
   // Dump this instruction on stderr.  Useful when running interactive
   // debuggers.
   void Dump() const;
@@ -634,6 +658,21 @@ inline void Instruction::SetDebugScope(const DebugScope& scope) {
   for (auto& i : dbg_line_insts_) {
     i.dbg_scope_ = scope;
   }
+}
+
+inline void Instruction::UpdateDebugInlinedAt(uint32_t new_inlined_at) {
+  dbg_scope_.SetInlinedAt(new_inlined_at);
+  for (auto& i : dbg_line_insts_) {
+    i.dbg_scope_.SetInlinedAt(new_inlined_at);
+  }
+}
+
+inline void Instruction::UpdateDebugInfo(const Instruction* from) {
+  if (from == nullptr) return;
+  clear_dbg_line_insts();
+  if (!from->dbg_line_insts().empty())
+    dbg_line_insts().push_back(from->dbg_line_insts()[0]);
+  SetDebugScope(from->GetDebugScope());
 }
 
 inline void Instruction::SetResultType(uint32_t ty_id) {
