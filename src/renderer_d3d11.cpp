@@ -4480,6 +4480,9 @@ namespace bgfx { namespace d3d11
 		{
 			DX_RELEASE(m_ptr, 0);
 		}
+
+		m_srv = NULL;
+		m_ptr = NULL;
 	}
 
 	void TextureD3D11::overrideInternal(uintptr_t _ptr)
