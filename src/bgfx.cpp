@@ -4539,10 +4539,10 @@ namespace bgfx
 
 	TextureHandle createTextureFromNative(const uintptr_t _ptr, uint16_t _width, uint16_t _height, bool _hasMips, uint16_t _numLayers, TextureFormat::Enum _format, uint64_t _flags)
 	{
-		BX_CHECK(NULL != _ptr, "_ptr can't be NULL");
+		BX_ASSERT(NULL != _ptr, "_ptr can't be NULL");
 		bx::Error err;
 		isTextureValid(0, false, _numLayers, _format, _flags, &err);
-		BX_CHECK(err.isOk(), "%s (layers %d, format %s)"
+		BX_ASSERT(err.isOk(), "%s (layers %d, format %s)"
 			, err.getMessage().getPtr()
 			, _numLayers
 			, getName(_format)
