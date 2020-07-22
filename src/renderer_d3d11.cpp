@@ -2122,6 +2122,7 @@ namespace bgfx { namespace d3d11
 			setShaderUniform(flags, predefined.m_loc, proj, 4);
 
 			commitShaderConstants();
+			invalidateTextureStage();
 			m_textures[_blitter.m_texture.idx].commit(0, BGFX_SAMPLER_INTERNAL_DEFAULT, NULL);
 			commitTextureStage();
 		}
@@ -2521,28 +2522,8 @@ namespace bgfx { namespace d3d11
 
 			if (!isValid(_fbh) )
 			{
-				if (NULL == g_platformData.nwh)
-				{
-					m_deviceCtx->OMGetRenderTargetsAndUnorderedAccessViews(
-						1
-						, &m_currentColor
-						, &m_backBufferDepthStencil
-						, 1
-						, 0
-						, NULL
-					);
-
-					if (NULL != m_currentColor)
-						m_currentColor->Release();
-
-					if (NULL != m_currentDepthStencil)
-						m_currentDepthStencil->Release();
-				}
-				else
-				{
-					m_currentColor = m_backBufferColor;
-					m_currentDepthStencil = m_backBufferDepthStencil;
-				}
+				m_currentColor        = m_backBufferColor;
+				m_currentDepthStencil = m_backBufferDepthStencil;
 
 				m_deviceCtx->OMSetRenderTargetsAndUnorderedAccessViews(
 					  1
@@ -5364,6 +5345,24 @@ namespace bgfx { namespace d3d11
 			return;
 		}
 
+		if (NULL == g_platformData.nwh)
+		{
+			m_deviceCtx->OMGetRenderTargetsAndUnorderedAccessViews(
+				1
+				, &m_backBufferColor
+				, &m_backBufferDepthStencil
+				, 1
+				, 0
+				, NULL
+			);
+
+			if(NULL != m_backBufferColor)
+				m_backBufferColor->Release();
+
+			if (NULL != m_backBufferDepthStencil)
+				m_backBufferDepthStencil->Release();
+		}
+
 		if (_render->m_capture)
 		{
 			renderDocTriggerCapture();
@@ -6419,6 +6418,12 @@ namespace bgfx { namespace d3d11
 		}
 
 		m_deviceCtx->OMSetRenderTargets(1, s_zero.m_rtv, NULL);
+
+		if (NULL == g_platformData.nwh)
+		{
+			m_backBufferColor = NULL;
+			m_backBufferDepthStencil = NULL;
+		}
 
 		if (NULL != m_msaaRt)
 		{
