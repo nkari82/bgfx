@@ -1521,7 +1521,7 @@ namespace bgfx { namespace d3d9
 
 		void setShaderUniform(uint8_t _flags, uint32_t _regIndex, const void* _val, uint32_t _numRegs)
 		{
-			if (_flags&BGFX_UNIFORM_FRAGMENTBIT)
+			if (_flags&kUniformFragmentBit)
 			{
 				DX_CHECK(m_device->SetPixelShaderConstantF(_regIndex, (const float*)_val, _numRegs) );
 			}
@@ -1741,7 +1741,7 @@ namespace bgfx { namespace d3d9
 		void setSamplerState(uint8_t _stage, uint64_t _flags, const float _rgba[4])
 		{
 			const uint64_t flags = _flags&( (~BGFX_SAMPLER_RESERVED_MASK) | BGFX_SAMPLER_BITS_MASK | BGFX_TEXTURE_SRGB);
-			BX_CHECK(_stage < BX_COUNTOF(m_samplerFlags), "");
+			BX_ASSERT(_stage < BX_COUNTOF(m_samplerFlags), "");
 			if (m_samplerFlags[_stage] != flags)
 			{
 				m_samplerFlags[_stage] = flags;
@@ -1906,7 +1906,7 @@ namespace bgfx { namespace d3d9
 				} \
 				break; \
 				\
-				case UniformType::_uniform|BGFX_UNIFORM_FRAGMENTBIT: \
+				case UniformType::_uniform|kUniformFragmentBit: \
 				{ \
 					_type* value = (_type*)data; \
 					DX_CHECK(device->SetPixelShaderConstant##_dxsuffix(loc, value, num) ); \
@@ -1938,7 +1938,7 @@ namespace bgfx { namespace d3d9
 					}
 					break;
 
-				case UniformType::Mat3|BGFX_UNIFORM_FRAGMENTBIT:
+				case UniformType::Mat3|kUniformFragmentBit:
 					{
 						float* value = (float*)data;
 						for (uint32_t ii = 0, count = num/3; ii < count; ++ii, loc += 3, value += 9)
@@ -2428,7 +2428,7 @@ namespace bgfx { namespace d3d9
 
 		BX_TRACE("Shader consts %d", count);
 
-		uint8_t fragmentBit = fragment ? BGFX_UNIFORM_FRAGMENTBIT : 0;
+		uint8_t fragmentBit = fragment ? kUniformFragmentBit : 0;
 
 		if (0 < count)
 		{
@@ -2470,7 +2470,7 @@ namespace bgfx { namespace d3d9
 					m_predefined[m_numPredefined].m_type  = uint8_t(predefined|fragmentBit);
 					m_numPredefined++;
 				}
-				else if (0 == (BGFX_UNIFORM_SAMPLERBIT & type) )
+				else if (0 == (kUniformSamplerBit & type) )
 				{
 					const UniformRegInfo* info = s_renderD3D9->m_uniformReg.find(name);
 					BX_WARN(NULL != info, "User defined uniform '%s' is not found, it won't be set.", name);
@@ -2494,7 +2494,7 @@ namespace bgfx { namespace d3d9
 				BX_TRACE("\t%s: %s (%s), num %2d, r.index %3d, r.count %2d"
 					, kind
 					, name
-					, getUniformTypeName(UniformType::Enum(type&~BGFX_UNIFORM_MASK) )
+					, getUniformTypeName(UniformType::Enum(type&~kUniformMask) )
 					, num
 					, regIndex
 					, regCount
@@ -2813,7 +2813,7 @@ namespace bgfx { namespace d3d9
 			}
 		}
 
-		BX_CHECK(false, "You should not be here.");
+		BX_ASSERT(false, "You should not be here.");
 		_pitch      = 0;
 		_slicePitch = 0;
 		return NULL;
@@ -2847,7 +2847,7 @@ namespace bgfx { namespace d3d9
 			return;
 		}
 
-		BX_CHECK(false, "You should not be here.");
+		BX_ASSERT(false, "You should not be here.");
 	}
 
 	void TextureD3D9::dirty(uint8_t _side, const Rect& _rect, uint16_t _z, uint16_t _depth)
@@ -2890,7 +2890,7 @@ namespace bgfx { namespace d3d9
 			return;
 		}
 
-		BX_CHECK(false, "You should not be here.");
+		BX_ASSERT(false, "You should not be here.");
 	}
 
 	IDirect3DSurface9* TextureD3D9::getSurface(uint8_t _side, uint8_t _mip) const
@@ -2904,7 +2904,7 @@ namespace bgfx { namespace d3d9
 			break;
 
 		case Texture3D:
-			BX_CHECK(false, "");
+			BX_ASSERT(false, "");
 			break;
 
 		case TextureCube:
@@ -3420,7 +3420,7 @@ namespace bgfx { namespace d3d9
 					}
 					else
 					{
-						BX_CHECK(false, "");
+						BX_ASSERT(false, "");
 					}
 				}
 			}
@@ -3816,7 +3816,7 @@ namespace bgfx { namespace d3d9
 
 				if (isCompute)
 				{
-					BX_CHECK(false, "Compute is not supported on DirectX 9.");
+					BX_ASSERT(false, "Compute is not supported on DirectX 9.");
 					continue;
 				}
 
