@@ -3041,7 +3041,7 @@ namespace bgfx
 					_cmdbuf.read(skip);
 
 					const TextureRef& ref = m_textureRef[handle.idx];
-					m_renderCtx->createTextureFromNative(handle, ref.m_refCount > 0 ? ptr : NULL, mem, flags, skip);
+					m_renderCtx->createTextureFromNative(handle, ref.m_refCount > 0 ? ptr : 0, mem, flags, skip);
 
 					release(mem);
 				}

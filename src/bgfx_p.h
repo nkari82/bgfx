@@ -4281,13 +4281,13 @@ namespace bgfx
 		BGFX_API_FUNC(TextureHandle createTextureFromNative(const uintptr_t _ptr, const Memory* _mem, uint64_t _flags, uint8_t _skip, TextureInfo* _info, BackbufferRatio::Enum _ratio, bool _immutable))
 		{
 			BGFX_MUTEX_SCOPE(m_resourceApiLock);
-			
+
 			TextureInfo ti;
 			if (NULL == _info)
 			{
 				_info = &ti;
 			}
-			
+
 			bimg::ImageContainer imageContainer;
 			if (bimg::imageParse(imageContainer, _mem->data, _mem->size))
 			{
@@ -4299,7 +4299,7 @@ namespace bgfx
 					, imageContainer.m_numMips > 1
 					, imageContainer.m_numLayers
 					, TextureFormat::Enum(imageContainer.m_format)
-					);
+				);
 			}
 			else
 			{
@@ -4311,20 +4311,22 @@ namespace bgfx
 				_info->numMips = 0;
 				_info->bitsPerPixel = 0;
 				_info->cubeMap = false;
-				
+
 				return BGFX_INVALID_HANDLE;
 			}
-			
+
+			_flags |= imageContainer.m_srgb ? BGFX_TEXTURE_SRGB : 0;
+
 			TextureHandle handle = { m_textureHandle.alloc() };
 			BX_WARN(isValid(handle), "Failed to allocate texture handle.");
-			
+
 			if (!isValid(handle))
 			{
 				release(_mem);
 				return BGFX_INVALID_HANDLE;
 			}
-			
-			TextureRef & ref = m_textureRef[handle.idx];
+
+			TextureRef& ref = m_textureRef[handle.idx];
 			ref.init(
 				_ratio
 				, _info->format
@@ -4333,10 +4335,10 @@ namespace bgfx
 				, imageContainer.m_numLayers
 				, 0 != (g_caps.supported & BGFX_CAPS_TEXTURE_DIRECT_ACCESS)
 				, _immutable
-				, 0 != (_flags & BGFX_TEXTURE_RT_MASK)
-				);
-			
-			if (ref.m_rt)
+				, _flags
+			);
+
+			if (ref.isRt())
 			{
 				m_rtMemoryUsed += int64_t(ref.m_storageSize);
 			}
