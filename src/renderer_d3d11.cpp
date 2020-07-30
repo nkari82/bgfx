@@ -1043,6 +1043,12 @@ namespace bgfx { namespace d3d11
 
 						if (FAILED(hr) )
 						{
+							BX_TRACE(
+								  "CreateSwapChain with DXGI_SWAP_EFFECT(%d) failed with HRESULT(%x)"
+								, m_scd.swapEffect
+								, hr
+								);
+
 							// DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL is not available on win7
 							// Try again with DXGI_SWAP_EFFECT_DISCARD
 							m_swapEffect      = DXGI_SWAP_EFFECT_DISCARD;
@@ -1406,7 +1412,11 @@ namespace bgfx { namespace d3d11
 							}
 							else
 							{
-								BX_TRACE("CheckFeatureSupport failed with %x for format %s.", hr, getName(TextureFormat::Enum(ii) ) );
+								BX_TRACE(
+									  "CheckFeatureSupport failed with HRESULT(%x) for format %s."
+									, hr
+									, getName(TextureFormat::Enum(ii) )
+									);
 							}
 
 							if (0 != (support & BGFX_CAPS_FORMAT_TEXTURE_IMAGE) )
@@ -1482,7 +1492,11 @@ namespace bgfx { namespace d3d11
 							}
 							else
 							{
-								BX_TRACE("CheckFeatureSupport failed with %x for sRGB format %s.", hr, getName(TextureFormat::Enum(ii) ) );
+								BX_TRACE(
+									  "CheckFeatureSupport failed with HRESULT(%x) for sRGB format %s."
+									, hr
+									, getName(TextureFormat::Enum(ii) )
+									);
 							}
 						}
 						else
@@ -2272,9 +2286,10 @@ namespace bgfx { namespace d3d11
 				}
 
 				m_lost = isLost(hr);
-				BGFX_FATAL(!m_lost
+				BGFX_FATAL(
+					  !m_lost
 					, bgfx::Fatal::DeviceLost
-					, "Device is lost. FAILED 0x%08x %s (%s)"
+					, "Device is lost. FAILED HRESULT(%x) %s (%s)"
 					, hr
 					, getLostReason(hr)
 					, DXGI_ERROR_DEVICE_REMOVED == hr ? getLostReason(m_device->GetDeviceRemovedReason() ) : "no info"
