@@ -1111,7 +1111,7 @@ namespace bgfx { namespace d3d11
 					m_scd.sampleDesc.Quality = 0;
 					m_scd.width  = _init.resolution.width;
 					m_scd.height = _init.resolution.height;
-					m_backBufferColor        = (ID3D11RenderTargetView*)g_platformData.backBuffer;
+					m_backBufferColor			= (ID3D11RenderTargetView*)g_platformData.backBuffer;
 					m_backBufferDepthStencil = (ID3D11DepthStencilView*)g_platformData.backBufferDS;
 				}
 			}
@@ -2239,7 +2239,7 @@ namespace bgfx { namespace d3d11
 
 			m_deviceCtx->OMSetRenderTargets(1, &m_backBufferColor, m_backBufferDepthStencil);
 
-			m_currentColor        = m_backBufferColor;
+			m_currentColor			= m_backBufferColor;
 			m_currentDepthStencil = m_backBufferDepthStencil;
 
 			for (uint32_t ii = 0; ii < BX_COUNTOF(m_frameBuffers); ++ii)
@@ -2428,7 +2428,7 @@ namespace bgfx { namespace d3d11
 				if (NULL == m_swapChain)
 				{
 					// Updated backbuffer if it changed in PlatformData.
-					m_backBufferColor        = (ID3D11RenderTargetView*)g_platformData.backBuffer;
+					m_backBufferColor			= (ID3D11RenderTargetView*)g_platformData.backBuffer;
 					m_backBufferDepthStencil = (ID3D11DepthStencilView*)g_platformData.backBufferDS;
 				}
 				else
@@ -2537,8 +2537,8 @@ namespace bgfx { namespace d3d11
 
 			if (!isValid(_fbh) )
 			{
-				m_currentColor        = m_backBufferColor;
-				m_currentDepthStencil = m_backBufferDepthStencil;
+				m_currentColor			= m_backBufferColor;
+				m_currentDepthStencil	= m_backBufferDepthStencil;
 
 				m_deviceCtx->OMSetRenderTargetsAndUnorderedAccessViews(
 					  1
@@ -5360,22 +5360,34 @@ namespace bgfx { namespace d3d11
 			return;
 		}
 
+		ID3D11RenderTargetView* currentBackBuffer = m_backBufferColor;
+		ID3D11DepthStencilView* currentBackBufferDepthStencil = m_backBufferDepthStencil;
+		
 		if (NULL == g_platformData.nwh)
 		{
+			ID3D11RenderTargetView* tempBackBuffer = NULL;
+			ID3D11DepthStencilView* tempBackBufferDepthStencil = NULL;
+
 			m_deviceCtx->OMGetRenderTargetsAndUnorderedAccessViews(
 				1
-				, &m_backBufferColor
-				, &m_backBufferDepthStencil
+				, &tempBackBuffer
+				, &tempBackBufferDepthStencil
 				, 1
 				, 0
 				, NULL
 			);
 
-			if (NULL != m_backBufferColor)
-				m_backBufferColor->Release();
+			if( NULL != tempBackBuffer)
+				tempBackBuffer->Release();
 
-			if (NULL != m_backBufferDepthStencil)
-				m_backBufferDepthStencil->Release();
+			if( NULL != tempBackBufferDepthStencil)
+				tempBackBufferDepthStencil->Release();
+
+			if (NULL == m_backBufferColor)
+				m_backBufferColor = tempBackBuffer;
+
+			if (NULL == m_backBufferDepthStencil)
+				m_backBufferDepthStencil = tempBackBufferDepthStencil;
 		}
 
 		if (_render->m_capture)
@@ -6434,11 +6446,8 @@ namespace bgfx { namespace d3d11
 
 		m_deviceCtx->OMSetRenderTargets(1, s_zero.m_rtv, NULL);
 
-		if (NULL == g_platformData.nwh)
-		{
-			m_backBufferColor = NULL;
-			m_backBufferDepthStencil = NULL;
-		}
+		m_backBufferColor = currentBackBuffer;
+		m_backBufferDepthStencil = currentBackBufferDepthStencil;
 
 		if (NULL != m_msaaRt)
 		{
