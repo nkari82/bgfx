@@ -15,6 +15,7 @@
 #ifndef SOURCE_FUZZ_FUZZER_UTIL_H_
 #define SOURCE_FUZZ_FUZZER_UTIL_H_
 
+#include <map>
 #include <vector>
 
 #include "source/fuzz/protobufs/spirvfuzz_protobufs.h"
@@ -141,6 +142,13 @@ uint32_t GetNumberOfStructMembers(
 uint32_t GetArraySize(const opt::Instruction& array_type_instruction,
                       opt::IRContext* context);
 
+// Returns the bound for indexing into a composite of type
+// |composite_type_inst|, i.e. the number of fields of a struct, the size of an
+// array, the number of components of a vector, or the number of columns of a
+// matrix. |composite_type_inst| must be the type of a composite.
+uint32_t GetBoundForCompositeIndex(const opt::Instruction& composite_type_inst,
+                                   opt::IRContext* ir_context);
+
 // Returns true if and only if |context| is valid, according to the validator
 // instantiated with |validator_options|.
 bool IsValid(opt::IRContext* context, spv_validator_options validator_options);
@@ -170,6 +178,10 @@ opt::Instruction* GetFunctionType(opt::IRContext* context,
 // Returns the function with result id |function_id|, or |nullptr| if no such
 // function exists.
 opt::Function* FindFunction(opt::IRContext* ir_context, uint32_t function_id);
+
+// Returns true if |function| has a block that the termination instruction is
+// OpKill or OpUnreachable.
+bool FunctionContainsOpKillOrUnreachable(const opt::Function& function);
 
 // Returns |true| if one of entry points has function id |function_id|.
 bool FunctionIsEntryPoint(opt::IRContext* context, uint32_t function_id);
@@ -281,6 +293,15 @@ bool IsPermutationOfRange(const std::vector<uint32_t>& arr, uint32_t lo,
 std::vector<opt::Instruction*> GetParameters(opt::IRContext* ir_context,
                                              uint32_t function_id);
 
+// Removes an OpFunctionParameter instruction with result id |parameter_id|
+// from the its function. Parameter's function must not be an entry-point
+// function. The function must have a parameter with result id |parameter_id|.
+//
+// Prefer using this function to opt::Function::RemoveParameter since
+// this function also guarantees that |ir_context| has no invalid pointers
+// to the removed parameter.
+void RemoveParameter(opt::IRContext* ir_context, uint32_t parameter_id);
+
 // Returns all OpFunctionCall instructions that call a function with result id
 // |function_id|.
 std::vector<opt::Instruction*> GetCallers(opt::IRContext* ir_context,
@@ -299,6 +320,10 @@ opt::Function* GetFunctionFromParameterId(opt::IRContext* ir_context,
 // more users, it is removed from the module. Returns the result id of the
 // OpTypeFunction instruction that is used as a type of the function with
 // |function_id|.
+//
+// CAUTION: When the old type of the function is removed from the module, its
+//          memory is deallocated. Be sure not to use any pointers to the old
+//          type when this function returns.
 uint32_t UpdateFunctionType(opt::IRContext* ir_context, uint32_t function_id,
                             uint32_t new_function_type_result_id,
                             uint32_t return_type_id,
@@ -394,6 +419,14 @@ uint32_t MaybeGetIntegerConstant(
     const std::vector<uint32_t>& words, uint32_t width, bool is_signed,
     bool is_irrelevant);
 
+// Returns the id of a 32-bit integer constant in the module with type
+// |int_type_id| and value |value|, or 0 if no such constant exists in the
+// module. |int_type_id| must exist in the module and it must correspond to a
+// 32-bit integer type.
+uint32_t MaybeGetIntegerConstantFromValueAndType(opt::IRContext* ir_context,
+                                                 uint32_t value,
+                                                 uint32_t int_type_id);
+
 // Returns the result id of an OpConstant instruction of floating-point type.
 // Returns 0 if no such instruction or type is present in the module.
 // The returned id either participates in IdIsIrrelevant fact or not, depending
@@ -441,8 +474,30 @@ inline uint32_t FloatToWord(float value) {
   return result;
 }
 
-}  // namespace fuzzerutil
+// Returns true if any of the following is true:
+// - |type1_id| and |type2_id| are the same id
+// - |type1_id| and |type2_id| refer to integer scalar or vector types, only
+//   differing by their signedness.
+bool TypesAreEqualUpToSign(opt::IRContext* ir_context, uint32_t type1_id,
+                           uint32_t type2_id);
 
+// Converts repeated field of UInt32Pair to a map. If two or more equal values
+// of |UInt32Pair::first()| are available in |data|, the last value of
+// |UInt32Pair::second()| is used.
+std::map<uint32_t, uint32_t> RepeatedUInt32PairToMap(
+    const google::protobuf::RepeatedPtrField<protobufs::UInt32Pair>& data);
+
+// Converts a map into a repeated field of UInt32Pair.
+google::protobuf::RepeatedPtrField<protobufs::UInt32Pair>
+MapToRepeatedUInt32Pair(const std::map<uint32_t, uint32_t>& data);
+
+// Returns the last instruction in |block_id| before which an instruction with
+// opcode |opcode| can be inserted, or nullptr if there is no such instruction.
+opt::Instruction* GetLastInsertBeforeInstruction(opt::IRContext* ir_context,
+                                                 uint32_t block_id,
+                                                 SpvOp opcode);
+
+}  // namespace fuzzerutil
 }  // namespace fuzz
 }  // namespace spvtools
 

@@ -373,6 +373,28 @@ uint32_t GetArraySize(const opt::Instruction& array_type_instruction,
   return array_length_constant->GetU32();
 }
 
+uint32_t GetBoundForCompositeIndex(const opt::Instruction& composite_type_inst,
+                                   opt::IRContext* ir_context) {
+  switch (composite_type_inst.opcode()) {
+    case SpvOpTypeArray:
+      return fuzzerutil::GetArraySize(composite_type_inst, ir_context);
+    case SpvOpTypeMatrix:
+    case SpvOpTypeVector:
+      return composite_type_inst.GetSingleWordInOperand(1);
+    case SpvOpTypeStruct: {
+      return fuzzerutil::GetNumberOfStructMembers(composite_type_inst);
+    }
+    case SpvOpTypeRuntimeArray:
+      assert(false &&
+             "GetBoundForCompositeIndex should not be invoked with an "
+             "OpTypeRuntimeArray, which does not have a static bound.");
+      return 0;
+    default:
+      assert(false && "Unknown composite type.");
+      return 0;
+  }
+}
+
 bool IsValid(opt::IRContext* context, spv_validator_options validator_options) {
   std::vector<uint32_t> binary;
   context->module()->ToBinary(&binary, false);
@@ -452,6 +474,16 @@ opt::Function* FindFunction(opt::IRContext* ir_context, uint32_t function_id) {
     }
   }
   return nullptr;
+}
+
+bool FunctionContainsOpKillOrUnreachable(const opt::Function& function) {
+  for (auto& block : function) {
+    if (block.terminator()->opcode() == SpvOpKill ||
+        block.terminator()->opcode() == SpvOpUnreachable) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool FunctionIsEntryPoint(opt::IRContext* context, uint32_t function_id) {
@@ -735,6 +767,20 @@ std::vector<opt::Instruction*> GetParameters(opt::IRContext* ir_context,
   return result;
 }
 
+void RemoveParameter(opt::IRContext* ir_context, uint32_t parameter_id) {
+  auto* function = GetFunctionFromParameterId(ir_context, parameter_id);
+  assert(function && "|parameter_id| is invalid");
+  assert(!FunctionIsEntryPoint(ir_context, function->result_id()) &&
+         "Can't remove parameter from an entry point function");
+
+  function->RemoveParameter(parameter_id);
+
+  // We've just removed parameters from the function and cleared their memory.
+  // Make sure analyses have no dangling pointers.
+  ir_context->InvalidateAnalysesExceptFor(
+      opt::IRContext::Analysis::kAnalysisNone);
+}
+
 std::vector<opt::Instruction*> GetCallers(opt::IRContext* ir_context,
                                           uint32_t function_id) {
   assert(FindFunction(ir_context, function_id) &&
@@ -790,6 +836,12 @@ uint32_t UpdateFunctionType(opt::IRContext* ir_context, uint32_t function_id,
   operand_ids.insert(operand_ids.end(), parameter_type_ids.begin(),
                      parameter_type_ids.end());
 
+  // A trivial case - we change nothing.
+  if (FindFunctionType(ir_context, operand_ids) ==
+      old_function_type->result_id()) {
+    return old_function_type->result_id();
+  }
+
   if (ir_context->get_def_use_mgr()->NumUsers(old_function_type) == 1 &&
       FindFunctionType(ir_context, operand_ids) == 0) {
     // We can change |old_function_type| only if it's used once in the module
@@ -813,17 +865,16 @@ uint32_t UpdateFunctionType(opt::IRContext* ir_context, uint32_t function_id,
     // existing one or create a new one.
     auto type_id = FindOrCreateFunctionType(
         ir_context, new_function_type_result_id, operand_ids);
+    assert(type_id != old_function_type->result_id() &&
+           "We should've handled this case above");
 
-    if (type_id != old_function_type->result_id()) {
-      function->DefInst().SetInOperand(1, {type_id});
+    function->DefInst().SetInOperand(1, {type_id});
 
-      // DefUseManager hasn't been updated yet, so if the following condition is
-      // true, then |old_function_type| will have no users when this function
-      // returns. We might as well remove it.
-      if (ir_context->get_def_use_mgr()->NumUsers(old_function_type) == 1) {
-        old_function_type->RemoveFromList();
-        delete old_function_type;
-      }
+    // DefUseManager hasn't been updated yet, so if the following condition is
+    // true, then |old_function_type| will have no users when this function
+    // returns. We might as well remove it.
+    if (ir_context->get_def_use_mgr()->NumUsers(old_function_type) == 1) {
+      ir_context->KillInst(old_function_type);
     }
 
     return type_id;
@@ -1104,6 +1155,32 @@ uint32_t MaybeGetIntegerConstant(
   return 0;
 }
 
+uint32_t MaybeGetIntegerConstantFromValueAndType(opt::IRContext* ir_context,
+                                                 uint32_t value,
+                                                 uint32_t int_type_id) {
+  auto int_type_inst = ir_context->get_def_use_mgr()->GetDef(int_type_id);
+
+  assert(int_type_inst && "The given type id must exist.");
+
+  auto int_type = ir_context->get_type_mgr()
+                      ->GetType(int_type_inst->result_id())
+                      ->AsInteger();
+
+  assert(int_type && int_type->width() == 32 &&
+         "The given type id must correspond to an 32-bit integer type.");
+
+  opt::analysis::IntConstant constant(int_type, {value});
+
+  // Check that the constant exists in the module.
+  if (!ir_context->get_constant_mgr()->FindConstant(&constant)) {
+    return 0;
+  }
+
+  return ir_context->get_constant_mgr()
+      ->GetDefiningInstruction(&constant)
+      ->result_id();
+}
+
 uint32_t MaybeGetFloatConstant(
     opt::IRContext* ir_context,
     const TransformationContext& transformation_context,
@@ -1193,7 +1270,88 @@ void AddStructType(opt::IRContext* ir_context, uint32_t result_id,
   UpdateModuleIdBound(ir_context, result_id);
 }
 
-}  // namespace fuzzerutil
+bool TypesAreEqualUpToSign(opt::IRContext* ir_context, uint32_t type1_id,
+                           uint32_t type2_id) {
+  if (type1_id == type2_id) {
+    return true;
+  }
 
+  auto type1 = ir_context->get_type_mgr()->GetType(type1_id);
+  auto type2 = ir_context->get_type_mgr()->GetType(type2_id);
+
+  // Integer scalar types must have the same width
+  if (type1->AsInteger() && type2->AsInteger()) {
+    return type1->AsInteger()->width() == type2->AsInteger()->width();
+  }
+
+  // Integer vector types must have the same number of components and their
+  // component types must be integers with the same width.
+  if (type1->AsVector() && type2->AsVector()) {
+    auto component_type1 = type1->AsVector()->element_type()->AsInteger();
+    auto component_type2 = type2->AsVector()->element_type()->AsInteger();
+
+    // Only check the component count and width if they are integer.
+    if (component_type1 && component_type2) {
+      return type1->AsVector()->element_count() ==
+                 type2->AsVector()->element_count() &&
+             component_type1->width() == component_type2->width();
+    }
+  }
+
+  // In all other cases, the types cannot be considered equal.
+  return false;
+}
+
+std::map<uint32_t, uint32_t> RepeatedUInt32PairToMap(
+    const google::protobuf::RepeatedPtrField<protobufs::UInt32Pair>& data) {
+  std::map<uint32_t, uint32_t> result;
+
+  for (const auto& entry : data) {
+    result[entry.first()] = entry.second();
+  }
+
+  return result;
+}
+
+google::protobuf::RepeatedPtrField<protobufs::UInt32Pair>
+MapToRepeatedUInt32Pair(const std::map<uint32_t, uint32_t>& data) {
+  google::protobuf::RepeatedPtrField<protobufs::UInt32Pair> result;
+
+  for (const auto& entry : data) {
+    protobufs::UInt32Pair pair;
+    pair.set_first(entry.first);
+    pair.set_second(entry.second);
+    *result.Add() = std::move(pair);
+  }
+
+  return result;
+}
+
+opt::Instruction* GetLastInsertBeforeInstruction(opt::IRContext* ir_context,
+                                                 uint32_t block_id,
+                                                 SpvOp opcode) {
+  // CFG::block uses std::map::at which throws an exception when |block_id| is
+  // invalid. The error message is unhelpful, though. Thus, we test that
+  // |block_id| is valid here.
+  const auto* label_inst = ir_context->get_def_use_mgr()->GetDef(block_id);
+  (void)label_inst;  // Make compilers happy in release mode.
+  assert(label_inst && label_inst->opcode() == SpvOpLabel &&
+         "|block_id| is invalid");
+
+  auto* block = ir_context->cfg()->block(block_id);
+  auto it = block->rbegin();
+  assert(it != block->rend() && "Basic block can't be empty");
+
+  if (block->GetMergeInst()) {
+    ++it;
+    assert(it != block->rend() &&
+           "|block| must have at least two instructions:"
+           "terminator and a merge instruction");
+  }
+
+  return CanInsertOpcodeBeforeInstruction(opcode, &*it) ? &*it : nullptr;
+}
+
+}  // namespace fuzzerutil
 }  // namespace fuzz
 }  // namespace spvtools

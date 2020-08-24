@@ -115,6 +115,9 @@ class FuzzerContext {
   uint32_t GetChanceOfAddingArrayOrStructType() {
     return chance_of_adding_array_or_struct_type_;
   }
+  uint32_t GetChanceOfAddingCompositeInsert() {
+    return chance_of_adding_composite_insert_;
+  }
   uint32_t GetChanceOfAddingCopyMemory() {
     return chance_of_adding_copy_memory_;
   }
@@ -135,6 +138,9 @@ class FuzzerContext {
   uint32_t GetChanceOfAddingLoad() { return chance_of_adding_load_; }
   uint32_t GetChanceOfAddingLocalVariable() {
     return chance_of_adding_local_variable_;
+  }
+  uint32_t GetChanceOfAddingLoopPreheader() {
+    return chance_of_adding_loop_preheader_;
   }
   uint32_t GetChanceOfAddingMatrixType() {
     return chance_of_adding_matrix_type_;
@@ -183,8 +189,14 @@ class FuzzerContext {
   uint32_t GetChanceOfDonatingAdditionalModule() {
     return chance_of_donating_additional_module_;
   }
+  uint32_t GetChanceOfGoingDeeperToInsertInComposite() {
+    return chance_of_going_deeper_to_insert_in_composite_;
+  }
   uint32_t GetChanceOfGoingDeeperWhenMakingAccessChain() {
     return chance_of_going_deeper_when_making_access_chain_;
+  }
+  uint32_t GetChanceOfInterchangingSignednessOfIntegerOperands() {
+    return chance_of_interchanging_signedness_of_integer_operands_;
   }
   uint32_t GetChanceOfInterchangingZeroLikeConstants() {
     return chance_of_interchanging_zero_like_constants_;
@@ -195,6 +207,9 @@ class FuzzerContext {
   uint32_t ChanceOfMakingDonorLivesafe() {
     return chance_of_making_donor_livesafe_;
   }
+  uint32_t GetChanceOfMakingVectorOperationDynamic() {
+    return chance_of_making_vector_operation_dynamic_;
+  }
   uint32_t GetChanceOfMergingBlocks() { return chance_of_merging_blocks_; }
   uint32_t GetChanceOfMovingBlockDown() { return chance_of_moving_block_down_; }
   uint32_t GetChanceOfObfuscatingConstant() {
@@ -203,14 +218,23 @@ class FuzzerContext {
   uint32_t GetChanceOfOutliningFunction() {
     return chance_of_outlining_function_;
   }
+  uint32_t GetChanceOfPermutingInstructions() {
+    return chance_of_permuting_instructions_;
+  }
   uint32_t GetChanceOfPermutingParameters() {
     return chance_of_permuting_parameters_;
   }
   uint32_t GetChanceOfPermutingPhiOperands() {
     return chance_of_permuting_phi_operands_;
   }
+  uint32_t GetChanceOfPropagatingInstructionsUp() {
+    return chance_of_propagating_instructions_up_;
+  }
   uint32_t GetChanceOfPushingIdThroughVariable() {
     return chance_of_pushing_id_through_variable_;
+  }
+  uint32_t GetChanceOfReplacingAddSubMulWithCarryingExtended() {
+    return chance_of_replacing_add_sub_mul_with_carrying_extended_;
   }
   uint32_t GetChanceOfReplacingCopyMemoryWithLoadStore() {
     return chance_of_replacing_copy_memory_with_load_store_;
@@ -223,6 +247,9 @@ class FuzzerContext {
   }
   uint32_t GetChanceOfReplacingLinearAlgebraInstructions() {
     return chance_of_replacing_linear_algebra_instructions_;
+  }
+  uint32_t GetChanceOfReplacingLoadStoreWithCopyMemory() {
+    return chance_of_replacing_load_store_with_copy_memory_;
   }
   uint32_t GetChanceOfReplacingParametersWithGlobals() {
     return chance_of_replacing_parameters_with_globals_;
@@ -275,6 +302,9 @@ class FuzzerContext {
   uint32_t GetRandomIndexForAccessChain(uint32_t composite_size_bound) {
     return random_generator_->RandomUint32(composite_size_bound);
   }
+  uint32_t GetRandomIndexForCompositeInsert(uint32_t number_of_components) {
+    return random_generator_->RandomUint32(number_of_components);
+  }
   uint32_t GetRandomLoopControlPartialCount() {
     return random_generator_->RandomUint32(max_loop_control_partial_count_);
   }
@@ -321,6 +351,7 @@ class FuzzerContext {
   uint32_t chance_of_adding_access_chain_;
   uint32_t chance_of_adding_another_struct_field_;
   uint32_t chance_of_adding_array_or_struct_type_;
+  uint32_t chance_of_adding_composite_insert_;
   uint32_t chance_of_adding_copy_memory_;
   uint32_t chance_of_adding_dead_block_;
   uint32_t chance_of_adding_dead_break_;
@@ -330,6 +361,7 @@ class FuzzerContext {
   uint32_t chance_of_adding_image_sample_unused_components_;
   uint32_t chance_of_adding_load_;
   uint32_t chance_of_adding_local_variable_;
+  uint32_t chance_of_adding_loop_preheader_;
   uint32_t chance_of_adding_matrix_type_;
   uint32_t chance_of_adding_no_contraction_decoration_;
   uint32_t chance_of_adding_parameters;
@@ -349,21 +381,28 @@ class FuzzerContext {
   uint32_t chance_of_constructing_composite_;
   uint32_t chance_of_copying_object_;
   uint32_t chance_of_donating_additional_module_;
+  uint32_t chance_of_going_deeper_to_insert_in_composite_;
   uint32_t chance_of_going_deeper_when_making_access_chain_;
+  uint32_t chance_of_interchanging_signedness_of_integer_operands_;
   uint32_t chance_of_interchanging_zero_like_constants_;
   uint32_t chance_of_inverting_comparison_operators_;
   uint32_t chance_of_making_donor_livesafe_;
+  uint32_t chance_of_making_vector_operation_dynamic_;
   uint32_t chance_of_merging_blocks_;
   uint32_t chance_of_moving_block_down_;
   uint32_t chance_of_obfuscating_constant_;
   uint32_t chance_of_outlining_function_;
+  uint32_t chance_of_permuting_instructions_;
   uint32_t chance_of_permuting_parameters_;
   uint32_t chance_of_permuting_phi_operands_;
+  uint32_t chance_of_propagating_instructions_up_;
   uint32_t chance_of_pushing_id_through_variable_;
+  uint32_t chance_of_replacing_add_sub_mul_with_carrying_extended_;
   uint32_t chance_of_replacing_copy_memory_with_load_store_;
   uint32_t chance_of_replacing_copyobject_with_store_load_;
   uint32_t chance_of_replacing_id_with_synonym_;
   uint32_t chance_of_replacing_linear_algebra_instructions_;
+  uint32_t chance_of_replacing_load_store_with_copy_memory_;
   uint32_t chance_of_replacing_parameters_with_globals_;
   uint32_t chance_of_replacing_parameters_with_struct_;
   uint32_t chance_of_splitting_block_;

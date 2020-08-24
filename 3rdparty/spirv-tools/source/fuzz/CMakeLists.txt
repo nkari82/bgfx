@@ -38,6 +38,7 @@ if(SPIRV_BUILD_FUZZER)
         fuzzer_context.h
         fuzzer_pass.h
         fuzzer_pass_add_access_chains.h
+        fuzzer_pass_add_composite_inserts.h
         fuzzer_pass_add_composite_types.h
         fuzzer_pass_add_copy_memory.h
         fuzzer_pass_add_dead_blocks.h
@@ -50,6 +51,7 @@ if(SPIRV_BUILD_FUZZER)
         fuzzer_pass_add_synonyms.h
         fuzzer_pass_add_loads.h
         fuzzer_pass_add_local_variables.h
+        fuzzer_pass_add_loop_preheaders.h
         fuzzer_pass_add_no_contraction_decorations.h
         fuzzer_pass_add_parameters.h
         fuzzer_pass_add_relaxed_decorations.h
@@ -65,17 +67,23 @@ if(SPIRV_BUILD_FUZZER)
         fuzzer_pass_copy_objects.h
         fuzzer_pass_donate_modules.h
         fuzzer_pass_invert_comparison_operators.h
+        fuzzer_pass_interchange_signedness_of_integer_operands.h
         fuzzer_pass_interchange_zero_like_constants.h
+        fuzzer_pass_make_vector_operations_dynamic.h
         fuzzer_pass_merge_blocks.h
         fuzzer_pass_obfuscate_constants.h
         fuzzer_pass_outline_functions.h
         fuzzer_pass_permute_blocks.h
         fuzzer_pass_permute_function_parameters.h
+        fuzzer_pass_permute_instructions.h
         fuzzer_pass_permute_phi_operands.h
+        fuzzer_pass_propagate_instructions_up.h
         fuzzer_pass_push_ids_through_variables.h
+        fuzzer_pass_replace_adds_subs_muls_with_carrying_extended.h
         fuzzer_pass_replace_copy_memories_with_loads_stores.h
         fuzzer_pass_replace_copy_objects_with_stores_loads.h
         fuzzer_pass_replace_linear_algebra_instructions.h
+        fuzzer_pass_replace_loads_stores_with_copy_memories.h
         fuzzer_pass_replace_parameter_with_global.h
         fuzzer_pass_replace_params_with_struct.h
         fuzzer_pass_split_blocks.h
@@ -106,6 +114,7 @@ if(SPIRV_BUILD_FUZZER)
         transformation_add_global_variable.h
         transformation_add_image_sample_unused_components.h
         transformation_add_local_variable.h
+        transformation_add_loop_preheader.h
         transformation_add_no_contraction_decoration.h
         transformation_add_parameter.h
         transformation_add_relaxed_decoration.h
@@ -123,25 +132,31 @@ if(SPIRV_BUILD_FUZZER)
         transformation_adjust_branch_weights.h
         transformation_composite_construct.h
         transformation_composite_extract.h
+        transformation_composite_insert.h
         transformation_compute_data_synonym_fact_closure.h
         transformation_context.h
         transformation_equation_instruction.h
         transformation_function_call.h
         transformation_invert_comparison_operator.h
         transformation_load.h
+        transformation_make_vector_operation_dynamic.h
         transformation_merge_blocks.h
         transformation_move_block_down.h
+        transformation_move_instruction_down.h
         transformation_outline_function.h
         transformation_permute_function_parameters.h
         transformation_permute_phi_operands.h
+        transformation_propagate_instruction_up.h
         transformation_push_id_through_variable.h
         transformation_record_synonymous_constants.h
+        transformation_replace_add_sub_mul_with_carrying_extended.h
         transformation_replace_boolean_constant_with_constant_binary.h
         transformation_replace_constant_with_uniform.h
         transformation_replace_copy_memory_with_load_store.h
         transformation_replace_copy_object_with_store_load.h
         transformation_replace_id_with_synonym.h
         transformation_replace_linear_algebra_instruction.h
+        transformation_replace_load_store_with_copy_memory.h
         transformation_replace_parameter_with_global.h
         transformation_replace_params_with_struct.h
         transformation_set_function_control.h
@@ -165,6 +180,7 @@ if(SPIRV_BUILD_FUZZER)
         fuzzer_context.cpp
         fuzzer_pass.cpp
         fuzzer_pass_add_access_chains.cpp
+        fuzzer_pass_add_composite_inserts.cpp
         fuzzer_pass_add_composite_types.cpp
         fuzzer_pass_add_copy_memory.cpp
         fuzzer_pass_add_dead_blocks.cpp
@@ -177,6 +193,7 @@ if(SPIRV_BUILD_FUZZER)
         fuzzer_pass_add_synonyms.cpp
         fuzzer_pass_add_loads.cpp
         fuzzer_pass_add_local_variables.cpp
+        fuzzer_pass_add_loop_preheaders.cpp
         fuzzer_pass_add_no_contraction_decorations.cpp
         fuzzer_pass_add_parameters.cpp
         fuzzer_pass_add_relaxed_decorations.cpp
@@ -192,17 +209,23 @@ if(SPIRV_BUILD_FUZZER)
         fuzzer_pass_copy_objects.cpp
         fuzzer_pass_donate_modules.cpp
         fuzzer_pass_invert_comparison_operators.cpp
+        fuzzer_pass_interchange_signedness_of_integer_operands.cpp
         fuzzer_pass_interchange_zero_like_constants.cpp
+        fuzzer_pass_make_vector_operations_dynamic.cpp
         fuzzer_pass_merge_blocks.cpp
         fuzzer_pass_obfuscate_constants.cpp
         fuzzer_pass_outline_functions.cpp
         fuzzer_pass_permute_blocks.cpp
         fuzzer_pass_permute_function_parameters.cpp
+        fuzzer_pass_permute_instructions.cpp
         fuzzer_pass_permute_phi_operands.cpp
+        fuzzer_pass_propagate_instructions_up.cpp
         fuzzer_pass_push_ids_through_variables.cpp
+        fuzzer_pass_replace_adds_subs_muls_with_carrying_extended.cpp
         fuzzer_pass_replace_copy_memories_with_loads_stores.cpp
         fuzzer_pass_replace_copy_objects_with_stores_loads.cpp
         fuzzer_pass_replace_linear_algebra_instructions.cpp
+        fuzzer_pass_replace_loads_stores_with_copy_memories.cpp
         fuzzer_pass_replace_parameter_with_global.cpp
         fuzzer_pass_replace_params_with_struct.cpp
         fuzzer_pass_split_blocks.cpp
@@ -232,6 +255,7 @@ if(SPIRV_BUILD_FUZZER)
         transformation_add_global_variable.cpp
         transformation_add_image_sample_unused_components.cpp
         transformation_add_local_variable.cpp
+        transformation_add_loop_preheader.cpp
         transformation_add_no_contraction_decoration.cpp
         transformation_add_parameter.cpp
         transformation_add_relaxed_decoration.cpp
@@ -249,25 +273,31 @@ if(SPIRV_BUILD_FUZZER)
         transformation_adjust_branch_weights.cpp
         transformation_composite_construct.cpp
         transformation_composite_extract.cpp
+        transformation_composite_insert.cpp
         transformation_compute_data_synonym_fact_closure.cpp
         transformation_context.cpp
         transformation_equation_instruction.cpp
         transformation_function_call.cpp
         transformation_invert_comparison_operator.cpp
         transformation_load.cpp
+        transformation_make_vector_operation_dynamic.cpp
         transformation_merge_blocks.cpp
         transformation_move_block_down.cpp
+        transformation_move_instruction_down.cpp
         transformation_outline_function.cpp
         transformation_permute_function_parameters.cpp
         transformation_permute_phi_operands.cpp
+        transformation_propagate_instruction_up.cpp
         transformation_push_id_through_variable.cpp
         transformation_record_synonymous_constants.cpp
+        transformation_replace_add_sub_mul_with_carrying_extended.cpp
         transformation_replace_boolean_constant_with_constant_binary.cpp
         transformation_replace_constant_with_uniform.cpp
         transformation_replace_copy_memory_with_load_store.cpp
         transformation_replace_copy_object_with_store_load.cpp
         transformation_replace_id_with_synonym.cpp
         transformation_replace_linear_algebra_instruction.cpp
+        transformation_replace_load_store_with_copy_memory.cpp
         transformation_replace_parameter_with_global.cpp
         transformation_replace_params_with_struct.cpp
         transformation_set_function_control.cpp
@@ -284,7 +314,7 @@ if(SPIRV_BUILD_FUZZER)
         ${CMAKE_CURRENT_BINARY_DIR}/protobufs/spvtoolsfuzz.pb.cc
         )
 
-  if(MSVC)
+  if(MSVC AND (NOT ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")))
     # Enable parallel builds across four cores for this lib
     add_definitions(/MP4)
   endif()
@@ -315,7 +345,7 @@ if(SPIRV_BUILD_FUZZER)
 
   # The fuzzer reuses a lot of functionality from the SPIRV-Tools library.
   target_link_libraries(SPIRV-Tools-fuzz
-        PUBLIC ${SPIRV_TOOLS}
+        PUBLIC ${SPIRV_TOOLS}-static
         PUBLIC SPIRV-Tools-opt
         PUBLIC protobuf::libprotobuf)
 

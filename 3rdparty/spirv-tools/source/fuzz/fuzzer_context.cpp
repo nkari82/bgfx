@@ -27,6 +27,7 @@ const std::pair<uint32_t, uint32_t> kChanceOfAddingAccessChain = {5, 50};
 const std::pair<uint32_t, uint32_t> kChanceOfAddingAnotherStructField = {20,
                                                                          90};
 const std::pair<uint32_t, uint32_t> kChanceOfAddingArrayOrStructType = {20, 90};
+const std::pair<uint32_t, uint32_t> kChanceOfAddingCompositeInsert = {20, 50};
 const std::pair<uint32_t, uint32_t> kChanceOfAddingCopyMemory = {20, 50};
 const std::pair<uint32_t, uint32_t> kChanceOfAddingDeadBlock = {20, 90};
 const std::pair<uint32_t, uint32_t> kChanceOfAddingDeadBreak = {5, 80};
@@ -38,6 +39,7 @@ const std::pair<uint32_t, uint32_t> kChanceOfAddingImageSampleUnusedComponents =
     {20, 90};
 const std::pair<uint32_t, uint32_t> kChanceOfAddingLoad = {5, 50};
 const std::pair<uint32_t, uint32_t> kChanceOfAddingLocalVariable = {20, 90};
+const std::pair<uint32_t, uint32_t> kChanceOfAddingLoopPreheader = {20, 90};
 const std::pair<uint32_t, uint32_t> kChanceOfAddingMatrixType = {20, 70};
 const std::pair<uint32_t, uint32_t> kChanceOfAddingNoContractionDecoration = {
     5, 70};
@@ -63,20 +65,31 @@ const std::pair<uint32_t, uint32_t> kChanceOfChoosingWorkgroupStorageClass = {
 const std::pair<uint32_t, uint32_t> kChanceOfConstructingComposite = {20, 50};
 const std::pair<uint32_t, uint32_t> kChanceOfCopyingObject = {20, 50};
 const std::pair<uint32_t, uint32_t> kChanceOfDonatingAdditionalModule = {5, 50};
+const std::pair<uint32_t, uint32_t> kChanceOfGoingDeeperToInsertInComposite = {
+    30, 70};
 const std::pair<uint32_t, uint32_t> kChanceOfGoingDeeperWhenMakingAccessChain =
     {50, 95};
 const std::pair<uint32_t, uint32_t> kChanceOfInterchangingZeroLikeConstants = {
     10, 90};
+const std::pair<uint32_t, uint32_t>
+    kChanceOfInterchangingSignednessOfIntegerOperands = {10, 90};
 const std::pair<uint32_t, uint32_t> kChanceOfInvertingComparisonOperators = {
     20, 50};
 const std::pair<uint32_t, uint32_t> kChanceOfMakingDonorLivesafe = {40, 60};
+const std::pair<uint32_t, uint32_t> kChanceOfMakingVectorOperationDynamic = {
+    20, 90};
 const std::pair<uint32_t, uint32_t> kChanceOfMergingBlocks = {20, 95};
 const std::pair<uint32_t, uint32_t> kChanceOfMovingBlockDown = {20, 50};
 const std::pair<uint32_t, uint32_t> kChanceOfObfuscatingConstant = {10, 90};
 const std::pair<uint32_t, uint32_t> kChanceOfOutliningFunction = {10, 90};
+const std::pair<uint32_t, uint32_t> kChanceOfPermutingInstructions = {20, 70};
 const std::pair<uint32_t, uint32_t> kChanceOfPermutingParameters = {30, 90};
 const std::pair<uint32_t, uint32_t> kChanceOfPermutingPhiOperands = {30, 90};
+const std::pair<uint32_t, uint32_t> kChanceOfPropagatingInstructionsUp = {20,
+                                                                          70};
 const std::pair<uint32_t, uint32_t> kChanceOfPushingIdThroughVariable = {5, 50};
+const std::pair<uint32_t, uint32_t>
+    kChanceOfReplacingAddSubMulWithCarryingExtended = {20, 70};
 const std::pair<uint32_t, uint32_t> kChanceOfReplacingCopyMemoryWithLoadStore =
     {20, 90};
 const std::pair<uint32_t, uint32_t> kChanceOfReplacingCopyObjectWithStoreLoad =
@@ -84,6 +97,8 @@ const std::pair<uint32_t, uint32_t> kChanceOfReplacingCopyObjectWithStoreLoad =
 const std::pair<uint32_t, uint32_t> kChanceOfReplacingIdWithSynonym = {10, 90};
 const std::pair<uint32_t, uint32_t>
     kChanceOfReplacingLinearAlgebraInstructions = {10, 90};
+const std::pair<uint32_t, uint32_t> kChanceOfReplacingLoadStoreWithCopyMemory =
+    {20, 90};
 const std::pair<uint32_t, uint32_t> kChanceOfReplacingParametersWithGlobals = {
     30, 70};
 const std::pair<uint32_t, uint32_t> kChanceOfReplacingParametersWithStruct = {
@@ -141,6 +156,8 @@ FuzzerContext::FuzzerContext(RandomGenerator* random_generator,
       ChooseBetweenMinAndMax(kChanceOfAddingAnotherStructField);
   chance_of_adding_array_or_struct_type_ =
       ChooseBetweenMinAndMax(kChanceOfAddingArrayOrStructType);
+  chance_of_adding_composite_insert_ =
+      ChooseBetweenMinAndMax(kChanceOfAddingCompositeInsert);
   chance_of_adding_copy_memory_ =
       ChooseBetweenMinAndMax(kChanceOfAddingCopyMemory);
   chance_of_adding_dead_block_ =
@@ -154,6 +171,8 @@ FuzzerContext::FuzzerContext(RandomGenerator* random_generator,
   chance_of_adding_global_variable_ =
       ChooseBetweenMinAndMax(kChanceOfAddingGlobalVariable);
   chance_of_adding_load_ = ChooseBetweenMinAndMax(kChanceOfAddingLoad);
+  chance_of_adding_loop_preheader_ =
+      ChooseBetweenMinAndMax(kChanceOfAddingLoopPreheader);
   chance_of_adding_image_sample_unused_components_ =
       ChooseBetweenMinAndMax(kChanceOfAddingImageSampleUnusedComponents);
   chance_of_adding_local_variable_ =
@@ -193,14 +212,20 @@ FuzzerContext::FuzzerContext(RandomGenerator* random_generator,
   chance_of_copying_object_ = ChooseBetweenMinAndMax(kChanceOfCopyingObject);
   chance_of_donating_additional_module_ =
       ChooseBetweenMinAndMax(kChanceOfDonatingAdditionalModule);
+  chance_of_going_deeper_to_insert_in_composite_ =
+      ChooseBetweenMinAndMax(kChanceOfGoingDeeperToInsertInComposite);
   chance_of_going_deeper_when_making_access_chain_ =
       ChooseBetweenMinAndMax(kChanceOfGoingDeeperWhenMakingAccessChain);
+  chance_of_interchanging_signedness_of_integer_operands_ =
+      ChooseBetweenMinAndMax(kChanceOfInterchangingSignednessOfIntegerOperands);
   chance_of_interchanging_zero_like_constants_ =
       ChooseBetweenMinAndMax(kChanceOfInterchangingZeroLikeConstants);
   chance_of_inverting_comparison_operators_ =
       ChooseBetweenMinAndMax(kChanceOfInvertingComparisonOperators);
   chance_of_making_donor_livesafe_ =
       ChooseBetweenMinAndMax(kChanceOfMakingDonorLivesafe);
+  chance_of_making_vector_operation_dynamic_ =
+      ChooseBetweenMinAndMax(kChanceOfMakingVectorOperationDynamic);
   chance_of_merging_blocks_ = ChooseBetweenMinAndMax(kChanceOfMergingBlocks);
   chance_of_moving_block_down_ =
       ChooseBetweenMinAndMax(kChanceOfMovingBlockDown);
@@ -208,12 +233,18 @@ FuzzerContext::FuzzerContext(RandomGenerator* random_generator,
       ChooseBetweenMinAndMax(kChanceOfObfuscatingConstant);
   chance_of_outlining_function_ =
       ChooseBetweenMinAndMax(kChanceOfOutliningFunction);
+  chance_of_permuting_instructions_ =
+      ChooseBetweenMinAndMax(kChanceOfPermutingInstructions);
   chance_of_permuting_parameters_ =
       ChooseBetweenMinAndMax(kChanceOfPermutingParameters);
   chance_of_permuting_phi_operands_ =
       ChooseBetweenMinAndMax(kChanceOfPermutingPhiOperands);
+  chance_of_propagating_instructions_up_ =
+      ChooseBetweenMinAndMax(kChanceOfPropagatingInstructionsUp);
   chance_of_pushing_id_through_variable_ =
       ChooseBetweenMinAndMax(kChanceOfPushingIdThroughVariable);
+  chance_of_replacing_add_sub_mul_with_carrying_extended_ =
+      ChooseBetweenMinAndMax(kChanceOfReplacingAddSubMulWithCarryingExtended);
   chance_of_replacing_copy_memory_with_load_store_ =
       ChooseBetweenMinAndMax(kChanceOfReplacingCopyMemoryWithLoadStore);
   chance_of_replacing_copyobject_with_store_load_ =
@@ -222,6 +253,8 @@ FuzzerContext::FuzzerContext(RandomGenerator* random_generator,
       ChooseBetweenMinAndMax(kChanceOfReplacingIdWithSynonym);
   chance_of_replacing_linear_algebra_instructions_ =
       ChooseBetweenMinAndMax(kChanceOfReplacingLinearAlgebraInstructions);
+  chance_of_replacing_load_store_with_copy_memory_ =
+      ChooseBetweenMinAndMax(kChanceOfReplacingLoadStoreWithCopyMemory);
   chance_of_replacing_parameters_with_globals_ =
       ChooseBetweenMinAndMax(kChanceOfReplacingParametersWithGlobals);
   chance_of_replacing_parameters_with_struct_ =

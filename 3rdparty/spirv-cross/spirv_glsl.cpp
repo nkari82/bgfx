@@ -1294,24 +1294,22 @@ uint32_t CompilerGLSL::type_to_packed_array_stride(const SPIRType &type, const B
 	auto &tmp = get<SPIRType>(parent);
 
 	uint32_t size = type_to_packed_size(tmp, flags, packing);
-	if (tmp.array.empty())
-	{
-		uint32_t alignment = type_to_packed_alignment(type, flags, packing);
-		return (size + alignment - 1) & ~(alignment - 1);
-	}
-	else
-	{
-		// For multidimensional arrays, array stride always matches size of subtype.
-		// The alignment cannot change because multidimensional arrays are basically N * M array elements.
-		return size;
-	}
+	uint32_t alignment = type_to_packed_alignment(type, flags, packing);
+	return (size + alignment - 1) & ~(alignment - 1);
 }
 
 uint32_t CompilerGLSL::type_to_packed_size(const SPIRType &type, const Bitset &flags, BufferPackingStandard packing)
 {
 	if (!type.array.empty())
 	{
-		return to_array_size_literal(type) * type_to_packed_array_stride(type, flags, packing);
+		uint32_t packed_size = to_array_size_literal(type) * type_to_packed_array_stride(type, flags, packing);
+
+		// For arrays of vectors and matrices in HLSL, the last element has a size which depends on its vector size,
+		// so that it is possible to pack other vectors into the last element.
+		if (packing_is_hlsl(packing) && type.basetype != SPIRType::Struct)
+			packed_size -= (4 - type.vecsize) * (type.width / 8);
+
+		return packed_size;
 	}
 
 	// If using PhysicalStorageBufferEXT storage class, this is a pointer,
@@ -1384,6 +1382,11 @@ uint32_t CompilerGLSL::type_to_packed_size(const SPIRType &type, const Bitset &f
 				else
 					size = type.vecsize * type.columns * base_alignment;
 			}
+
+			// For matrices in HLSL, the last element has a size which depends on its vector size,
+			// so that it is possible to pack other vectors into the last element.
+			if (packing_is_hlsl(packing) && type.columns > 1)
+				size -= (4 - type.vecsize) * (type.width / 8);
 		}
 	}
 
@@ -1436,7 +1439,7 @@ bool CompilerGLSL::buffer_is_packing_standard(const SPIRType &type, BufferPackin
 		    is_top_level_block && size_t(i + 1) == type.member_types.size() && !memb_type.array.empty();
 
 		uint32_t packed_size = 0;
-		if (!member_can_be_unsized)
+		if (!member_can_be_unsized || packing_is_hlsl(packing))
 			packed_size = type_to_packed_size(memb_type, member_flags, packing);
 
 		// We only need to care about this if we have non-array types which can straddle the vec4 boundary.
@@ -1449,12 +1452,13 @@ bool CompilerGLSL::buffer_is_packing_standard(const SPIRType &type, BufferPackin
 				packed_alignment = max(packed_alignment, 16u);
 		}
 
+		uint32_t actual_offset = type_struct_member_offset(type, i);
+		// Field is not in the specified range anymore and we can ignore any further fields.
+		if (actual_offset >= end_offset)
+			break;
+
 		uint32_t alignment = max(packed_alignment, pad_alignment);
 		offset = (offset + alignment - 1) & ~(alignment - 1);
-
-		// Field is not in the specified range anymore and we can ignore any further fields.
-		if (offset >= end_offset)
-			break;
 
 		// The next member following a struct member is aligned to the base alignment of the struct that came before.
 		// GL 4.5 spec, 7.6.2.2.
@@ -1464,10 +1468,8 @@ bool CompilerGLSL::buffer_is_packing_standard(const SPIRType &type, BufferPackin
 			pad_alignment = 1;
 
 		// Only care about packing if we are in the given range
-		if (offset >= start_offset)
+		if (actual_offset >= start_offset)
 		{
-			uint32_t actual_offset = type_struct_member_offset(type, i);
-
 			// We only care about offsets in std140, std430, etc ...
 			// For EnhancedLayout variants, we have the flexibility to choose our own offsets.
 			if (!packing_has_flexible_offset(packing))
@@ -1510,7 +1512,7 @@ bool CompilerGLSL::buffer_is_packing_standard(const SPIRType &type, BufferPackin
 		}
 
 		// Bump size.
-		offset += packed_size;
+		offset = actual_offset + packed_size;
 	}
 
 	return true;
@@ -2142,6 +2144,10 @@ void CompilerGLSL::emit_flattened_io_block_member(const std::string &basename, c
 
 	assert(member_type->basetype != SPIRType::Struct);
 
+	// We're overriding struct member names, so ensure we do so on the primary type.
+	if (parent_type->type_alias)
+		parent_type = &get<SPIRType>(parent_type->type_alias);
+
 	// Sanitize underscores because joining the two identifiers might create more than 1 underscore in a row,
 	// which is not allowed.
 	flattened_name = sanitize_underscores(flattened_name);
@@ -2185,9 +2191,13 @@ void CompilerGLSL::emit_flattened_io_block_struct(const std::string &basename, c
 
 void CompilerGLSL::emit_flattened_io_block(const SPIRVariable &var, const char *qual)
 {
-	auto &type = get<SPIRType>(var.basetype);
-	if (!type.array.empty())
+	auto &var_type = get<SPIRType>(var.basetype);
+	if (!var_type.array.empty())
 		SPIRV_CROSS_THROW("Array of varying structs cannot be flattened to legacy-compatible varyings.");
+
+	// Emit flattened types based on the type alias. Normally, we are never supposed to emit
+	// struct declarations for aliased types.
+	auto &type = var_type.type_alias ? get<SPIRType>(var_type.type_alias) : var_type;
 
 	auto old_flags = ir.meta[type.self].decoration.decoration_flags;
 	// Emit the members as if they are part of a block to get all qualifiers.
@@ -2232,7 +2242,8 @@ void CompilerGLSL::emit_interface_block(const SPIRVariable &var)
 		// ESSL earlier than 310 and GLSL earlier than 150 did not support
 		// I/O variables which are struct types.
 		// To support this, flatten the struct into separate varyings instead.
-		if ((options.es && options.version < 310) || (!options.es && options.version < 150))
+		if (options.force_flattened_io_blocks || (options.es && options.version < 310) ||
+		    (!options.es && options.version < 150))
 		{
 			// I/O blocks on ES require version 310 with Android Extension Pack extensions, or core version 320.
 			// On desktop, I/O blocks were introduced with geometry shaders in GL 3.2 (GLSL 150).
@@ -2292,7 +2303,8 @@ void CompilerGLSL::emit_interface_block(const SPIRVariable &var)
 		// I/O variables which are struct types.
 		// To support this, flatten the struct into separate varyings instead.
 		if (type.basetype == SPIRType::Struct &&
-		    ((options.es && options.version < 310) || (!options.es && options.version < 150)))
+		    (options.force_flattened_io_blocks || (options.es && options.version < 310) ||
+		     (!options.es && options.version < 150)))
 		{
 			emit_flattened_io_block(var, qual);
 		}
@@ -14066,37 +14078,29 @@ void CompilerGLSL::reset_name_caches()
 void CompilerGLSL::fixup_type_alias()
 {
 	// Due to how some backends work, the "master" type of type_alias must be a block-like type if it exists.
-	// FIXME: Multiple alias types which are both block-like will be awkward, for now, it's best to just drop the type
-	// alias if the slave type is a block type.
 	ir.for_each_typed_id<SPIRType>([&](uint32_t self, SPIRType &type) {
-		if (type.type_alias && type_is_block_like(type))
+		if (!type.type_alias)
+			return;
+
+		if (has_decoration(type.self, DecorationBlock) || has_decoration(type.self, DecorationBufferBlock))
 		{
+			// Top-level block types should never alias anything else.
+			type.type_alias = 0;
+		}
+		else if (type_is_block_like(type) && type.self == ID(self))
+		{
+			// A block-like type is any type which contains Offset decoration, but not top-level blocks,
+			// i.e. blocks which are placed inside buffers.
 			// Become the master.
 			ir.for_each_typed_id<SPIRType>([&](uint32_t other_id, SPIRType &other_type) {
-				if (other_id == type.self)
+				if (other_id == self)
 					return;
 
 				if (other_type.type_alias == type.type_alias)
-					other_type.type_alias = type.self;
+					other_type.type_alias = self;
 			});
 
 			this->get<SPIRType>(type.type_alias).type_alias = self;
-			type.type_alias = 0;
-		}
-	});
-
-	ir.for_each_typed_id<SPIRType>([&](uint32_t, SPIRType &type) {
-		if (type.type_alias && type_is_block_like(type))
-		{
-			// This is not allowed, drop the type_alias.
-			type.type_alias = 0;
-		}
-		else if (type.type_alias && !type_is_block_like(this->get<SPIRType>(type.type_alias)))
-		{
-			// If the alias master is not a block-like type, there is no reason to use type aliasing.
-			// This case can happen if two structs are declared with the same name, but they are unrelated.
-			// Aliases are only used to deal with aliased types for structs which are used in different buffer types
-			// which all create a variant of the same struct with different DecorationOffset values.
 			type.type_alias = 0;
 		}
 	});
