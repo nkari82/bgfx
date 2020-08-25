@@ -3201,15 +3201,14 @@ namespace bgfx { namespace gl
 
 		void* createTexture(TextureHandle _handle, const Memory* _mem, uint64_t _flags, uint8_t _skip, uintptr_t* _ptr) override
 		{
-			BX_UNUSED(_ptr);
-			m_textures[_handle.idx].create(_mem, _flags, _skip);
+			m_textures[_handle.idx].create(_mem, _flags, _skip, _ptr);
 			return NULL;
 		}
 
 		void createTextureFromNative(TextureHandle _handle, const uintptr_t _ptr, const Memory* _mem, uint64_t _flags, uint8_t _skip) override
 		{
 			m_textures[_handle.idx].create(_mem, _flags, _skip);
-			if (NULL != _ptr)
+			if (0 != _ptr)
 				m_textures[_handle.idx].overrideInternal(_ptr);
 		}
 
@@ -5309,7 +5308,7 @@ namespace bgfx { namespace gl
 		return true;
 	}
 
-	void TextureGL::create(const Memory* _mem, uint64_t _flags, uint8_t _skip)
+	void TextureGL::create(const Memory* _mem, uint64_t _flags, uint8_t _skip, uintptr_t* _ptr)
 	{
 		bimg::ImageContainer imageContainer;
 
@@ -5544,6 +5543,9 @@ namespace bgfx { namespace gl
 			{
 				BX_FREE(g_allocator, temp);
 			}
+
+			if (NULL != _ptr)
+				*_ptr = static_cast<uintptr_t>(m_id);
 		}
 
 		GL_CHECK(glBindTexture(m_target, 0) );
