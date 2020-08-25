@@ -2550,8 +2550,9 @@ VK_IMPORT_DEVICE
 			m_program[_handle.idx].destroy();
 		}
 
-		void* createTexture(TextureHandle _handle, const Memory* _mem, uint64_t _flags, uint8_t _skip) override
+		void* createTexture(TextureHandle _handle, const Memory* _mem, uint64_t _flags, uint8_t _skip, uintptr_t* _ptr) override
 		{
+			BX_UNUSED(_ptr);
 			return m_textures[_handle.idx].create(_mem, _flags, _skip);
 		}
 

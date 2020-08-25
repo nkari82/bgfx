@@ -2995,10 +2995,14 @@ namespace bgfx
 					uint8_t skip;
 					_cmdbuf.read(skip);
 
-					void* ptr = m_renderCtx->createTexture(handle, mem, flags, skip);
-					if (NULL != ptr)
+					bool hasCb;
+					_cmdbuf.read(hasCb);
+
+					uintptr_t ptr;
+					void* direct = m_renderCtx->createTexture(handle, mem, flags, skip, &ptr);
+					if (NULL != direct)
 					{
-						setDirectAccessPtr(handle, ptr);
+						setDirectAccessPtr(handle, direct);
 					}
 
 					bx::MemoryReader reader(mem->data, mem->size);
@@ -3018,6 +3022,15 @@ namespace bgfx
 					}
 
 					release(mem);
+
+					if (hasCb)
+					{
+						CreateFn cb;
+						uintptr_t userData[2]{0};
+						_cmdbuf.read(cb);
+						_cmdbuf.read(userData);
+						cb(handle, ptr, userData);
+					}
 				}
 				break;
 
@@ -4365,10 +4378,10 @@ namespace bgfx
 		bimg::imageGetSize( (bimg::TextureInfo*)&_info, _width, _height, _depth, _cubeMap, _hasMips, _numLayers, bimg::TextureFormat::Enum(_format) );
 	}
 
-	TextureHandle createTexture(const Memory* _mem, uint64_t _flags, uint8_t _skip, TextureInfo* _info)
+	TextureHandle createTexture(const Memory* _mem, uint64_t _flags, uint8_t _skip, TextureInfo* _info, const CreateCb* _createCb)
 	{
 		BX_ASSERT(NULL != _mem, "_mem can't be NULL");
-		return s_ctx->createTexture(_mem, _flags, _skip, _info, BackbufferRatio::Count, false);
+		return s_ctx->createTexture(_mem, _flags, _skip, _info, _createCb, BackbufferRatio::Count, false);
 	}
 
 	void getTextureSizeFromRatio(BackbufferRatio::Enum _ratio, uint16_t& _width, uint16_t& _height)
@@ -4389,7 +4402,7 @@ namespace bgfx
 		_height = bx::max<uint16_t>(1, _height);
 	}
 
-	static TextureHandle createTexture2D(BackbufferRatio::Enum _ratio, uint16_t _width, uint16_t _height, bool _hasMips, uint16_t _numLayers, TextureFormat::Enum _format, uint64_t _flags, const Memory* _mem)
+	static TextureHandle createTexture2D(BackbufferRatio::Enum _ratio, uint16_t _width, uint16_t _height, bool _hasMips, uint16_t _numLayers, TextureFormat::Enum _format, uint64_t _flags, const Memory* _mem, const CreateCb* _createCb)
 	{
 		bx::Error err;
 		isTextureValid(0, false, _numLayers, _format, _flags, &err);
@@ -4439,22 +4452,22 @@ namespace bgfx
 		tc.m_mem       = _mem;
 		bx::write(&writer, tc);
 
-		return s_ctx->createTexture(mem, _flags, 0, NULL, _ratio, NULL != _mem);
+		return s_ctx->createTexture(mem, _flags, 0, NULL, _createCb, _ratio, NULL != _mem);
 	}
 
-	TextureHandle createTexture2D(uint16_t _width, uint16_t _height, bool _hasMips, uint16_t _numLayers, TextureFormat::Enum _format, uint64_t _flags, const Memory* _mem)
+	TextureHandle createTexture2D(uint16_t _width, uint16_t _height, bool _hasMips, uint16_t _numLayers, TextureFormat::Enum _format, uint64_t _flags, const Memory* _mem, const CreateCb* _createCb)
 	{
 		BX_ASSERT(_width > 0 && _height > 0, "Invalid texture size (width %d, height %d).", _width, _height);
-		return createTexture2D(BackbufferRatio::Count, _width, _height, _hasMips, _numLayers, _format, _flags, _mem);
+		return createTexture2D(BackbufferRatio::Count, _width, _height, _hasMips, _numLayers, _format, _flags, _mem, _createCb);
 	}
 
-	TextureHandle createTexture2D(BackbufferRatio::Enum _ratio, bool _hasMips, uint16_t _numLayers, TextureFormat::Enum _format, uint64_t _flags)
+	TextureHandle createTexture2D(BackbufferRatio::Enum _ratio, bool _hasMips, uint16_t _numLayers, TextureFormat::Enum _format, uint64_t _flags, const CreateCb* _createCb)
 	{
 		BX_ASSERT(_ratio < BackbufferRatio::Count, "Invalid back buffer ratio.");
-		return createTexture2D(_ratio, 0, 0, _hasMips, _numLayers, _format, _flags, NULL);
+		return createTexture2D(_ratio, 0, 0, _hasMips, _numLayers, _format, _flags, NULL, _createCb);
 	}
 
-	TextureHandle createTexture3D(uint16_t _width, uint16_t _height, uint16_t _depth, bool _hasMips, TextureFormat::Enum _format, uint64_t _flags, const Memory* _mem)
+	TextureHandle createTexture3D(uint16_t _width, uint16_t _height, uint16_t _depth, bool _hasMips, TextureFormat::Enum _format, uint64_t _flags, const Memory* _mem, const CreateCb* _createCb)
 	{
 		bx::Error err;
 		isTextureValid(_depth, false, 1, _format, _flags, &err);
@@ -4492,10 +4505,10 @@ namespace bgfx
 		tc.m_mem       = _mem;
 		bx::write(&writer, tc);
 
-		return s_ctx->createTexture(mem, _flags, 0, NULL, BackbufferRatio::Count, NULL != _mem);
+		return s_ctx->createTexture(mem, _flags, 0, NULL, _createCb, BackbufferRatio::Count, NULL != _mem);
 	}
 
-	TextureHandle createTextureCube(uint16_t _size, bool _hasMips, uint16_t _numLayers, TextureFormat::Enum _format, uint64_t _flags, const Memory* _mem)
+	TextureHandle createTextureCube(uint16_t _size, bool _hasMips, uint16_t _numLayers, TextureFormat::Enum _format, uint64_t _flags, const Memory* _mem, const CreateCb* _createCb)
 	{
 		bx::Error err;
 		isTextureValid(0, true, _numLayers, _format, _flags, &err);
@@ -4534,7 +4547,7 @@ namespace bgfx
 		tc.m_mem       = _mem;
 		bx::write(&writer, tc);
 
-		return s_ctx->createTexture(mem, _flags, 0, NULL, BackbufferRatio::Count, NULL != _mem);
+		return s_ctx->createTexture(mem, _flags, 0, NULL, _createCb, BackbufferRatio::Count, NULL != _mem);
 	}
 
 	TextureHandle createTextureFromNative(const uintptr_t _ptr, uint16_t _width, uint16_t _height, bool _hasMips, uint16_t _numLayers, TextureFormat::Enum _format, uint64_t _flags)

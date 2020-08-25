@@ -277,7 +277,7 @@ namespace bgfx { namespace d3d11
 		{
 			None = 0,
 			Texture = 1,
-			ShaderResourceView = 2,
+			SRV = 2,
 		};
 
 		TextureD3D11()
@@ -290,7 +290,7 @@ namespace bgfx { namespace d3d11
 		{
 		}
 
-		void* create(const Memory* _mem, uint64_t _flags, uint8_t _skip);
+		void* create(const Memory* _mem, uint64_t _flags, uint8_t _skip, uintptr_t* _ptr = NULL);
 		void destroy();
 		void overrideInternal(uintptr_t _ptr);
 		void update(uint8_t _side, uint8_t _mip, const Rect& _rect, uint16_t _z, uint16_t _depth, uint16_t _pitch, const Memory* _mem);

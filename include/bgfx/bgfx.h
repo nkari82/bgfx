@@ -697,6 +697,12 @@ namespace bgfx
 		bx::AllocatorI* allocator;
 	};
 
+	/// Texture create callback
+	/// param[in] _handle
+	/// param[in] _ptr
+	/// param[in] _userData
+	typedef void (*CreateFn)(TextureHandle _handle, uintptr_t _ptr, void* _userData);
+
 	/// Memory release callback.
 	///
 	/// param[in] _ptr Pointer to allocated data.
@@ -705,6 +711,14 @@ namespace bgfx
 	/// @attention C99 equivalent is `bgfx_release_fn_t`.
 	///
 	typedef void (*ReleaseFn)(void* _ptr, void* _userData);
+
+	/// Texture create callback Data
+	/// 
+	struct CreateCb
+	{
+		CreateFn createFn;
+		uintptr_t userData[2];
+	};
 
 	/// Memory must be obtained by calling `bgfx::alloc`, `bgfx::copy`, or `bgfx::makeRef`.
 	///
@@ -2666,6 +2680,7 @@ namespace bgfx
 		, uint64_t _flags = BGFX_TEXTURE_NONE|BGFX_SAMPLER_NONE
 		, uint8_t _skip = 0
 		, TextureInfo* _info = NULL
+		, const CreateCb* _createCb = NULL
 		);
 
 	/// Create 2D texture.
@@ -2697,6 +2712,7 @@ namespace bgfx
 		, TextureFormat::Enum _format
 		, uint64_t _flags = BGFX_TEXTURE_NONE|BGFX_SAMPLER_NONE
 		, const Memory* _mem = NULL
+		, const CreateCb* _createCb = NULL
 		);
 
 	/// Create texture with size based on backbuffer ratio. Texture will maintain ratio
@@ -2723,6 +2739,7 @@ namespace bgfx
 		, uint16_t _numLayers
 		, TextureFormat::Enum _format
 		, uint64_t _flags = BGFX_TEXTURE_NONE|BGFX_SAMPLER_NONE
+		, const CreateCb* _createCb = NULL
 		);
 
 	/// Create 3D texture.
@@ -2752,6 +2769,7 @@ namespace bgfx
 		, TextureFormat::Enum _format
 		, uint64_t _flags = BGFX_TEXTURE_NONE|BGFX_SAMPLER_NONE
 		, const Memory* _mem = NULL
+		, const CreateCb* _createCb = NULL
 		);
 
 	/// Create Cube texture.
@@ -2781,6 +2799,7 @@ namespace bgfx
 		, TextureFormat::Enum _format
 		, uint64_t _flags = BGFX_TEXTURE_NONE|BGFX_SAMPLER_NONE
 		, const Memory* _mem = NULL
+		, const CreateCb* _createCb = NULL
 		);
 
 	/// Create texture from native

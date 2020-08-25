@@ -1785,9 +1785,9 @@ namespace bgfx { namespace d3d11
 			m_program[_handle.idx].destroy();
 		}
 
-		void* createTexture(TextureHandle _handle, const Memory* _mem, uint64_t _flags, uint8_t _skip) override
+		void* createTexture(TextureHandle _handle, const Memory* _mem, uint64_t _flags, uint8_t _skip, uintptr_t* _ptr) override
 		{
-			return m_textures[_handle.idx].create(_mem, _flags, _skip);
+			return m_textures[_handle.idx].create(_mem, _flags, _skip, _ptr);
 		}
 
 		void createTextureFromNative(TextureHandle _handle, const uintptr_t _ptr, const Memory* _mem, uint64_t _flags, uint8_t _skip) override
@@ -4150,7 +4150,7 @@ namespace bgfx { namespace d3d11
 		}
 	}
 
-	void* TextureD3D11::create(const Memory* _mem, uint64_t _flags, uint8_t _skip)
+	void* TextureD3D11::create(const Memory* _mem, uint64_t _flags, uint8_t _skip, uintptr_t* _ptr)
 	{
 		void* directAccessPtr = NULL;
 
@@ -4484,6 +4484,9 @@ namespace bgfx { namespace d3d11
 					}
 				}
 			}
+
+			if(NULL != _ptr)
+				*_ptr = reinterpret_cast<uintptr_t>(m_srv);
 		}
 
 		return directAccessPtr;
@@ -4496,7 +4499,7 @@ namespace bgfx { namespace d3d11
 		s_renderD3D11->m_srvUavLru.invalidateWithParent(getHandle().idx);
 		DX_RELEASE(m_rt, 0);
 		DX_RELEASE(m_uav, 0);
-		if (0 == (m_sharedFlags & SharedFlags::ShaderResourceView))
+		if (0 == (m_sharedFlags & SharedFlags::SRV))
 		{
 			DX_RELEASE(m_srv, 0);
 		}
@@ -4513,7 +4516,7 @@ namespace bgfx { namespace d3d11
 	void TextureD3D11::overrideInternal(uintptr_t _ptr)
 	{
 		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-		const bool readable = (m_srv != NULL) && !(m_sharedFlags & SharedFlags::ShaderResourceView);
+		const bool readable = (m_srv != NULL) && !(m_sharedFlags & SharedFlags::SRV);
 		if (readable) {
 			m_srv->GetDesc(&srvDesc);
 		}
@@ -4525,7 +4528,7 @@ namespace bgfx { namespace d3d11
 		IUnknown * unkown = reinterpret_cast<IUnknown*>(_ptr);
 		if (SUCCEEDED(unkown->QueryInterface(IID_ID3D11ShaderResourceView, (void**)&m_srv)))
 		{
-			m_sharedFlags |= SharedFlags::ShaderResourceView;
+			m_sharedFlags |= SharedFlags::SRV;
 			m_srv->GetResource(&m_ptr);	
 			m_ptr->Release();
 			m_srv->Release();
