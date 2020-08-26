@@ -2999,7 +2999,9 @@ namespace bgfx
 					_cmdbuf.read(hasCb);
 
 					uintptr_t ptr;
-					void* direct = m_renderCtx->createTexture(handle, mem, flags, skip, &ptr);
+					uint16_t width, height;
+					uint8_t format;
+					void* direct = m_renderCtx->createTexture(handle, mem, flags, skip, &ptr, &width, &height, &format);
 					if (NULL != direct)
 					{
 						setDirectAccessPtr(handle, direct);
@@ -3029,7 +3031,7 @@ namespace bgfx
 						uintptr_t userData[2]{0};
 						_cmdbuf.read(cb);
 						_cmdbuf.read(userData);
-						cb(handle, ptr, userData);
+						cb(handle, ptr, width, height, format, userData);
 					}
 				}
 				break;
@@ -3366,6 +3368,12 @@ namespace bgfx
 		, reset(BGFX_RESET_NONE)
 		, numBackBuffers(2)
 		, maxFrameLatency(0)
+	{
+	}
+
+	CreateCb::CreateCb()
+		: createFn(NULL)
+		, userData{0}
 	{
 	}
 

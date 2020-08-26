@@ -3199,9 +3199,9 @@ namespace bgfx { namespace gl
 			m_program[_handle.idx].destroy();
 		}
 
-		void* createTexture(TextureHandle _handle, const Memory* _mem, uint64_t _flags, uint8_t _skip, uintptr_t* _ptr) override
+		void* createTexture(TextureHandle _handle, const Memory* _mem, uint64_t _flags, uint8_t _skip, uintptr_t* _ptr, uint16_t* _width, uint16_t* _height, uint8_t* _format) override
 		{
-			m_textures[_handle.idx].create(_mem, _flags, _skip, _ptr);
+			m_textures[_handle.idx].create(_mem, _flags, _skip, _ptr, _width, _height, _format);
 			return NULL;
 		}
 
@@ -5308,7 +5308,7 @@ namespace bgfx { namespace gl
 		return true;
 	}
 
-	void TextureGL::create(const Memory* _mem, uint64_t _flags, uint8_t _skip, uintptr_t* _ptr)
+	void TextureGL::create(const Memory* _mem, uint64_t _flags, uint8_t _skip, uintptr_t* _ptr, uint16_t* _width, uint16_t* _height, uint8_t* _format)
 	{
 		bimg::ImageContainer imageContainer;
 
@@ -5546,6 +5546,16 @@ namespace bgfx { namespace gl
 
 			if (NULL != _ptr)
 				*_ptr = static_cast<uintptr_t>(m_id);
+
+			if (NULL != _width)
+				*_width = (uint16_t)m_width;
+
+			if (NULL != _height)
+				*_height = (uint16_t)m_height;
+
+			if (NULL != _format)
+				*_format = m_textureFormat;
+
 		}
 
 		GL_CHECK(glBindTexture(m_target, 0) );

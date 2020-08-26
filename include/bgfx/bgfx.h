@@ -701,7 +701,7 @@ namespace bgfx
 	/// param[in] _handle
 	/// param[in] _ptr
 	/// param[in] _userData
-	typedef void (*CreateFn)(TextureHandle _handle, uintptr_t _ptr, void* _userData);
+	typedef void (*CreateFn)(TextureHandle _handle, uintptr_t _ptr, uint16_t _width, uint16_t _height, uint8_t _format, uintptr_t* _userData);
 
 	/// Memory release callback.
 	///
@@ -716,6 +716,8 @@ namespace bgfx
 	/// 
 	struct CreateCb
 	{
+		CreateCb();
+
 		CreateFn createFn;
 		uintptr_t userData[2];
 	};
