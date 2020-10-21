@@ -40,6 +40,7 @@ static const uint32_t kDebugLocalVariableOperandParentIndex = 9;
 static const uint32_t kExtInstInstructionInIdx = 1;
 static const uint32_t kDebugGlobalVariableOperandFlagsIndex = 12;
 static const uint32_t kDebugLocalVariableOperandFlagsIndex = 10;
+static const uint32_t kDebugLocalVariableOperandArgNumberIndex = 11;
 
 namespace spvtools {
 namespace opt {
@@ -99,6 +100,13 @@ void DebugInfoManager::RegisterDbgFunction(Instruction* inst) {
   assert(inst->GetOpenCL100DebugOpcode() == OpenCLDebugInfo100DebugFunction &&
          "inst is not a DebugFunction");
   auto fn_id = inst->GetSingleWordOperand(kDebugFunctionOperandFunctionIndex);
+  // Do not register function that has been optimized away
+  auto fn_inst = GetDbgInst(fn_id);
+  if (fn_inst != nullptr) {
+    assert(GetDbgInst(fn_id)->GetOpenCL100DebugOpcode() ==
+           OpenCLDebugInfo100DebugInfoNone);
+    return;
+  }
   assert(
       fn_id_to_dbg_fn_.find(fn_id) == fn_id_to_dbg_fn_.end() &&
       "Register DebugFunction for a function that already has DebugFunction");
@@ -433,15 +441,27 @@ bool DebugInfoManager::IsAncestorOfScope(uint32_t scope, uint32_t ancestor) {
   return false;
 }
 
-bool DebugInfoManager::IsDeclareVisibleToInstr(Instruction* dbg_declare,
-                                               uint32_t instr_scope_id) {
-  if (instr_scope_id == kNoDebugScope) return false;
-
+Instruction* DebugInfoManager::GetDebugLocalVariableFromDeclare(
+    Instruction* dbg_declare) {
+  assert(dbg_declare);
   uint32_t dbg_local_var_id =
       dbg_declare->GetSingleWordOperand(kDebugDeclareOperandLocalVariableIndex);
   auto dbg_local_var_itr = id_to_dbg_inst_.find(dbg_local_var_id);
   assert(dbg_local_var_itr != id_to_dbg_inst_.end());
-  uint32_t decl_scope_id = dbg_local_var_itr->second->GetSingleWordOperand(
+  return dbg_local_var_itr->second;
+}
+
+bool DebugInfoManager::IsFunctionParameter(Instruction* dbg_local_var) const {
+  // If a DebugLocalVariable has ArgNumber operand, it is a function parameter.
+  return dbg_local_var->NumOperands() >
+         kDebugLocalVariableOperandArgNumberIndex;
+}
+
+bool DebugInfoManager::IsLocalVariableVisibleToInstr(Instruction* dbg_local_var,
+                                                     uint32_t instr_scope_id) {
+  if (instr_scope_id == kNoDebugScope) return false;
+
+  uint32_t decl_scope_id = dbg_local_var->GetSingleWordOperand(
       kDebugLocalVariableOperandParentIndex);
 
   // If the scope of DebugDeclare is an ancestor scope of the instruction's
@@ -495,11 +515,20 @@ void DebugInfoManager::AddDebugValueIfVarDeclIsVisible(
 
   uint32_t instr_scope_id = scope_and_line->GetDebugScope().GetLexicalScope();
   for (auto* dbg_decl_or_val : dbg_decl_itr->second) {
-    if (!IsDeclareVisibleToInstr(dbg_decl_or_val, instr_scope_id)) continue;
+    // If it declares a function parameter, the store instruction for the
+    // function parameter can exist out of the function parameter's scope
+    // because of the function inlining. We always add DebugValue for a
+    // function parameter next to the DebugDeclare regardless of the scope.
+    auto* dbg_local_var = GetDebugLocalVariableFromDeclare(dbg_decl_or_val);
+    bool is_function_param = IsFunctionParameter(dbg_local_var);
+    if (!is_function_param &&
+        !IsLocalVariableVisibleToInstr(dbg_local_var, instr_scope_id))
+      continue;
 
     // Avoid inserting the new DebugValue between OpPhi or OpVariable
     // instructions.
-    Instruction* insert_before = insert_pos->NextNode();
+    Instruction* insert_before = is_function_param ? dbg_decl_or_val->NextNode()
+                                                   : insert_pos->NextNode();
     while (insert_before->opcode() == SpvOpPhi ||
            insert_before->opcode() == SpvOpVariable) {
       insert_before = insert_before->NextNode();
@@ -516,7 +545,9 @@ void DebugInfoManager::AddDebugValueIfVarDeclIsVisible(
                                    kDebugValueOperandLocalVariableIndex),
                                value_id, 0, index_id, insert_before);
     assert(added_dbg_value != nullptr);
-    added_dbg_value->UpdateDebugInfoFrom(scope_and_line);
+    added_dbg_value->UpdateDebugInfoFrom(is_function_param ? dbg_decl_or_val
+                                                           : scope_and_line);
+    AnalyzeDebugInst(added_dbg_value);
   }
 }
 
@@ -560,42 +591,84 @@ bool DebugInfoManager::IsDebugDeclare(Instruction* instr) {
          GetVariableIdOfDebugValueUsedForDeclare(instr) != 0;
 }
 
-void DebugInfoManager::AnalyzeDebugInst(Instruction* dbg_inst) {
-  if (!dbg_inst->IsOpenCL100DebugInstr()) return;
+void DebugInfoManager::ReplaceAllUsesInDebugScopeWithPredicate(
+    uint32_t before, uint32_t after,
+    const std::function<bool(Instruction*)>& predicate) {
+  auto scope_id_to_users_itr = scope_id_to_users_.find(before);
+  if (scope_id_to_users_itr != scope_id_to_users_.end()) {
+    for (Instruction* inst : scope_id_to_users_itr->second) {
+      if (predicate(inst)) inst->UpdateLexicalScope(after);
+    }
+    scope_id_to_users_[after] = scope_id_to_users_itr->second;
+    scope_id_to_users_.erase(scope_id_to_users_itr);
+  }
+  auto inlinedat_id_to_users_itr = inlinedat_id_to_users_.find(before);
+  if (inlinedat_id_to_users_itr != inlinedat_id_to_users_.end()) {
+    for (Instruction* inst : inlinedat_id_to_users_itr->second) {
+      if (predicate(inst)) inst->UpdateDebugInlinedAt(after);
+    }
+    inlinedat_id_to_users_[after] = inlinedat_id_to_users_itr->second;
+    inlinedat_id_to_users_.erase(inlinedat_id_to_users_itr);
+  }
+}
 
-  RegisterDbgInst(dbg_inst);
+void DebugInfoManager::ClearDebugScopeAndInlinedAtUses(Instruction* inst) {
+  auto scope_id_to_users_itr = scope_id_to_users_.find(inst->result_id());
+  if (scope_id_to_users_itr != scope_id_to_users_.end()) {
+    scope_id_to_users_.erase(scope_id_to_users_itr);
+  }
+  auto inlinedat_id_to_users_itr =
+      inlinedat_id_to_users_.find(inst->result_id());
+  if (inlinedat_id_to_users_itr != inlinedat_id_to_users_.end()) {
+    inlinedat_id_to_users_.erase(inlinedat_id_to_users_itr);
+  }
+}
 
-  if (dbg_inst->GetOpenCL100DebugOpcode() == OpenCLDebugInfo100DebugFunction) {
-    assert(GetDebugFunction(dbg_inst->GetSingleWordOperand(
+void DebugInfoManager::AnalyzeDebugInst(Instruction* inst) {
+  if (inst->GetDebugScope().GetLexicalScope() != kNoDebugScope) {
+    auto& users = scope_id_to_users_[inst->GetDebugScope().GetLexicalScope()];
+    users.insert(inst);
+  }
+  if (inst->GetDebugInlinedAt() != kNoInlinedAt) {
+    auto& users = inlinedat_id_to_users_[inst->GetDebugInlinedAt()];
+    users.insert(inst);
+  }
+
+  if (!inst->IsOpenCL100DebugInstr()) return;
+
+  RegisterDbgInst(inst);
+
+  if (inst->GetOpenCL100DebugOpcode() == OpenCLDebugInfo100DebugFunction) {
+    assert(GetDebugFunction(inst->GetSingleWordOperand(
                kDebugFunctionOperandFunctionIndex)) == nullptr &&
            "Two DebugFunction instruction exists for a single OpFunction.");
-    RegisterDbgFunction(dbg_inst);
+    RegisterDbgFunction(inst);
   }
 
   if (deref_operation_ == nullptr &&
-      dbg_inst->GetOpenCL100DebugOpcode() == OpenCLDebugInfo100DebugOperation &&
-      dbg_inst->GetSingleWordOperand(kDebugOperationOperandOperationIndex) ==
+      inst->GetOpenCL100DebugOpcode() == OpenCLDebugInfo100DebugOperation &&
+      inst->GetSingleWordOperand(kDebugOperationOperandOperationIndex) ==
           OpenCLDebugInfo100Deref) {
-    deref_operation_ = dbg_inst;
+    deref_operation_ = inst;
   }
 
   if (debug_info_none_inst_ == nullptr &&
-      dbg_inst->GetOpenCL100DebugOpcode() == OpenCLDebugInfo100DebugInfoNone) {
-    debug_info_none_inst_ = dbg_inst;
+      inst->GetOpenCL100DebugOpcode() == OpenCLDebugInfo100DebugInfoNone) {
+    debug_info_none_inst_ = inst;
   }
 
-  if (empty_debug_expr_inst_ == nullptr && IsEmptyDebugExpression(dbg_inst)) {
-    empty_debug_expr_inst_ = dbg_inst;
+  if (empty_debug_expr_inst_ == nullptr && IsEmptyDebugExpression(inst)) {
+    empty_debug_expr_inst_ = inst;
   }
 
-  if (dbg_inst->GetOpenCL100DebugOpcode() == OpenCLDebugInfo100DebugDeclare) {
+  if (inst->GetOpenCL100DebugOpcode() == OpenCLDebugInfo100DebugDeclare) {
     uint32_t var_id =
-        dbg_inst->GetSingleWordOperand(kDebugDeclareOperandVariableIndex);
-    RegisterDbgDeclare(var_id, dbg_inst);
+        inst->GetSingleWordOperand(kDebugDeclareOperandVariableIndex);
+    RegisterDbgDeclare(var_id, inst);
   }
 
-  if (uint32_t var_id = GetVariableIdOfDebugValueUsedForDeclare(dbg_inst)) {
-    RegisterDbgDeclare(var_id, dbg_inst);
+  if (uint32_t var_id = GetVariableIdOfDebugValueUsedForDeclare(inst)) {
+    RegisterDbgDeclare(var_id, inst);
   }
 }
 
@@ -675,6 +748,17 @@ void DebugInfoManager::AnalyzeDebugInsts(Module& module) {
 }
 
 void DebugInfoManager::ClearDebugInfo(Instruction* instr) {
+  auto scope_id_to_users_itr =
+      scope_id_to_users_.find(instr->GetDebugScope().GetLexicalScope());
+  if (scope_id_to_users_itr != scope_id_to_users_.end()) {
+    scope_id_to_users_itr->second.erase(instr);
+  }
+  auto inlinedat_id_to_users_itr =
+      inlinedat_id_to_users_.find(instr->GetDebugInlinedAt());
+  if (inlinedat_id_to_users_itr != inlinedat_id_to_users_.end()) {
+    inlinedat_id_to_users_itr->second.erase(instr);
+  }
+
   if (instr == nullptr || !instr->IsOpenCL100DebugInstr()) {
     return;
   }

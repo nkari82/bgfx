@@ -249,6 +249,9 @@ static const uint32_t kArgumentBufferBinding = ~(3u);
 
 static const uint32_t kMaxArgumentBuffers = 8;
 
+// The arbitrary maximum for the nesting of array of array copies.
+static const uint32_t kArrayCopyMultidimMax = 6;
+
 // Decompiles SPIR-V to Metal Shading Language
 class CompilerMSL : public CompilerGLSL
 {
@@ -265,6 +268,8 @@ public:
 		Platform platform = macOS;
 		uint32_t msl_version = make_msl_version(1, 2);
 		uint32_t texel_buffer_texture_width = 4096; // Width of 2D Metal textures used as 1D texel buffers
+		uint32_t r32ui_linear_texture_alignment = 4;
+		uint32_t r32ui_alignment_constant_id = 65535;
 		uint32_t swizzle_buffer_index = 30;
 		uint32_t indirect_params_buffer_index = 29;
 		uint32_t shader_output_buffer_index = 28;
@@ -290,6 +295,7 @@ public:
 		bool swizzle_texture_samples = false;
 		bool tess_domain_origin_lower_left = false;
 		bool multiview = false;
+		bool multiview_layered_rendering = true;
 		bool view_index_from_device_index = false;
 		bool dispatch_base = false;
 		bool texture_1D_as_2D = false;
@@ -346,6 +352,12 @@ public:
 		// It will be translated as a compute kernel, so it can use the global invocation ID
 		// to index the output buffer.
 		bool vertex_for_tessellation = false;
+
+		// Assume that SubpassData images have multiple layers. Layered input attachments
+		// are addressed relative to the Layer output from the vertex pipeline. This option
+		// has no effect with multiview, since all input attachments are assumed to be layered
+		// and will be addressed using the current ViewIndex.
+		bool arrayed_subpass_input = false;
 
 		enum class IndexType
 		{
@@ -546,6 +558,9 @@ public:
 	// to use for a particular location. The default is 4 if number of components is not overridden.
 	void set_fragment_output_components(uint32_t location, uint32_t components);
 
+	void set_combined_sampler_suffix(const char *suffix);
+	const char *get_combined_sampler_suffix() const;
+
 protected:
 	// An enum of SPIR-V functions that are implemented in additional
 	// source code that is added to the shader if necessary.
@@ -614,8 +629,6 @@ protected:
 		SPVFuncImplConvertYCbCrBT601,
 		SPVFuncImplConvertYCbCrBT2020,
 		SPVFuncImplDynamicImageSampler,
-
-		SPVFuncImplArrayCopyMultidimMax = 6
 	};
 
 	// If the underlying resource has been used for comparison then duplicate loads of that resource must be too
@@ -834,8 +847,8 @@ protected:
 
 	bool does_shader_write_sample_mask = false;
 
-	void bitcast_to_builtin_store(uint32_t target_id, std::string &expr, const SPIRType &expr_type) override;
-	void bitcast_from_builtin_load(uint32_t source_id, std::string &expr, const SPIRType &expr_type) override;
+	void cast_to_builtin_store(uint32_t target_id, std::string &expr, const SPIRType &expr_type) override;
+	void cast_from_builtin_load(uint32_t source_id, std::string &expr, const SPIRType &expr_type) override;
 	void emit_store_statement(uint32_t lhs_expression, uint32_t rhs_expression) override;
 
 	void analyze_sampled_image_usage();

@@ -26,7 +26,7 @@
 
 // Check handle, cannot be bgfx::kInvalidHandle and must be valid.
 #define BGFX_CHECK_HANDLE(_desc, _handleAlloc, _handle) \
-	BX_ASSERT(isValid(_handle)                           \
+	BX_ASSERT(isValid(_handle)                          \
 		&& _handleAlloc.isValid(_handle.idx)            \
 		, "Invalid handle. %s handle: %d (max %d)"      \
 		, _desc                                         \
@@ -131,6 +131,7 @@ namespace bgfx
 #include <bimg/bimg.h>
 #include "shader.h"
 #include "vertexlayout.h"
+#include "version.h"
 
 #define BGFX_CHUNK_MAGIC_TEX BX_MAKEFOURCC('T', 'E', 'X', 0x0)
 
@@ -1811,12 +1812,16 @@ namespace bgfx
 	{
 		void init(
 			  BackbufferRatio::Enum _ratio
+			, uint16_t _width
+			, uint16_t _height
+			, uint16_t _depth
 			, TextureFormat::Enum _format
 			, uint32_t _storageSize
 			, uint8_t _numMips
 			, uint16_t _numLayers
 			, bool _ptrPending
 			, bool _immutable
+			, bool _cubeMap
 			, uint64_t _flags
 			)
 		{
@@ -1824,11 +1829,15 @@ namespace bgfx
 			m_storageSize = _storageSize;
 			m_refCount    = 1;
 			m_bbRatio     = uint8_t(_ratio);
+			m_width       = _width;
+			m_height      = _height;
+			m_depth       = _depth;
 			m_format      = uint8_t(_format);
 			m_numMips     = _numMips;
 			m_numLayers   = _numLayers;
 			m_owned       = false;
 			m_immutable   = _immutable;
+			m_cubeMap     = _cubeMap;
 			m_flags       = _flags;
 		}
 
@@ -1842,17 +1851,26 @@ namespace bgfx
 			return 0 != (m_flags&BGFX_TEXTURE_READ_BACK);
 		}
 
+		bool isCubeMap() const
+		{
+			return m_cubeMap;
+		}
+
 		String   m_name;
 		void*    m_ptr;
 		uint64_t m_flags;
 		uint32_t m_storageSize;
 		int16_t  m_refCount;
 		uint8_t  m_bbRatio;
+		uint16_t m_width;
+		uint16_t m_height;
+		uint16_t m_depth;
 		uint8_t  m_format;
 		uint8_t  m_numMips;
 		uint16_t m_numLayers;
 		bool     m_owned;
 		bool     m_immutable;
+		bool     m_cubeMap;
 	};
 
 	struct FrameBufferRef
@@ -4249,12 +4267,16 @@ namespace bgfx
 			TextureRef& ref = m_textureRef[handle.idx];
 			ref.init(
 				  _ratio
+				, uint16_t(imageContainer.m_width)
+				, uint16_t(imageContainer.m_height)
+				, uint16_t(imageContainer.m_depth)
 				, _info->format
 				, _info->storageSize
 				, imageContainer.m_numMips
 				, imageContainer.m_numLayers
 				, 0 != (g_caps.supported & BGFX_CAPS_TEXTURE_DIRECT_ACCESS)
 				, _immutable
+				, imageContainer.m_cubeMap
 				, _flags
 				);
 
@@ -4530,15 +4552,16 @@ namespace bgfx
 			cmdbuf.write(_mem);
 		}
 
-		bool checkFrameBuffer(uint8_t _num, const Attachment* _attachment) const
+		void checkFrameBuffer(uint8_t _num, const Attachment* _attachment) const
 		{
 			uint8_t color = 0;
 			uint8_t depth = 0;
 
 			for (uint32_t ii = 0; ii < _num; ++ii)
 			{
-				TextureHandle texHandle = _attachment[ii].handle;
-				if (bimg::isDepth(bimg::TextureFormat::Enum(m_textureRef[texHandle.idx].m_format)))
+				const TextureHandle texHandle = _attachment[ii].handle;
+				const TextureRef& tr = m_textureRef[texHandle.idx];
+				if (bimg::isDepth(bimg::TextureFormat::Enum(tr.m_format) ) )
 				{
 					++depth;
 				}
@@ -4546,22 +4569,34 @@ namespace bgfx
 				{
 					++color;
 				}
+
+				BX_ASSERT(
+					  0 == (tr.m_flags & BGFX_TEXTURE_READ_BACK)
+					, "Frame buffer texture cannot be read back texture. Attachment %d: has flags 0x%016" PRIx64 "."
+					);
+
+				BX_ASSERT(
+					  0 != (tr.m_flags & BGFX_TEXTURE_RT_MASK)
+					, "Frame buffer texture is not create with one of `BGFX_TEXTURE_RT*` flags. Attachment %d: has flags 0x%016" PRIx64 "."
+					, ii
+					, tr.m_flags
+					);
 			}
 
-			return color <= g_caps.limits.maxFBAttachments
+			BX_ASSERT(true
+				&& color <= g_caps.limits.maxFBAttachments
 				&& depth <= 1
-				;
+				, "Too many frame buffer attachments (num attachments: %d, max color attachments %d)!"
+				, _num
+				, g_caps.limits.maxFBAttachments
+				);
 		}
 
 		BGFX_API_FUNC(FrameBufferHandle createFrameBuffer(uint8_t _num, const Attachment* _attachment, bool _destroyTextures) )
 		{
 			BGFX_MUTEX_SCOPE(m_resourceApiLock);
 
-			BX_ASSERT(checkFrameBuffer(_num, _attachment)
-				, "Too many frame buffer attachments (num attachments: %d, max color attachments %d)!"
-				, _num
-				, g_caps.limits.maxFBAttachments
-				);
+			checkFrameBuffer(_num, _attachment);
 
 			FrameBufferHandle handle = { m_frameBufferHandle.alloc() };
 			BX_WARN(isValid(handle), "Failed to allocate frame buffer handle.");
