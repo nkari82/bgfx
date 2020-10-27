@@ -4359,12 +4359,16 @@ namespace bgfx
 			TextureRef& ref = m_textureRef[handle.idx];
 			ref.init(
 				_ratio
+				, uint16_t(imageContainer.m_width)
+				, uint16_t(imageContainer.m_height)
+				, uint16_t(imageContainer.m_depth)
 				, _info->format
 				, _info->storageSize
 				, imageContainer.m_numMips
 				, imageContainer.m_numLayers
 				, 0 != (g_caps.supported & BGFX_CAPS_TEXTURE_DIRECT_ACCESS)
 				, _immutable
+				, imageContainer.m_cubeMap
 				, _flags
 			);
 
