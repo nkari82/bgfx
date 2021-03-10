@@ -223,7 +223,7 @@ namespace bgfx
 	class DxPtr
 	{
 	private:
-		ULONG _expected;
+		ULONG _count;	// init reference count(for debug)
 		Interface* _ptr;
 
 	public:
@@ -241,7 +241,7 @@ namespace bgfx
 			{
 				Interface* ptr = _ref->_ptr;
 				if( NULL != ptr )
-					_ref->_expected = getRefCount(ptr) - 1;
+					_ref->_count = getRefCount(ptr);
 			}
 
 			operator Interface** () const throw()
@@ -257,7 +257,7 @@ namespace bgfx
 
 	public:
 		DxPtr(Interface* ptr)
-			: _expected(ptr ? (getRefCount(ptr) - 1) : 0)
+			: _count(ptr ? getRefCount(ptr) : 0)
 			, _ptr(ptr)
 		{}
 
@@ -268,7 +268,7 @@ namespace bgfx
 
 		void operator=(Interface* ptr)
 		{
-			_expected = ptr ? (getRefCount(ptr) - 1) : 0;
+			_count = ptr ? getRefCount(ptr) : 0;
 			_ptr = ptr;
 		}
 
@@ -284,7 +284,7 @@ namespace bgfx
 
 		inline ULONG expected()
 		{
-			return _expected;
+			return _count - 1;
 		}
 	};
 } // namespace bgfx
