@@ -2484,8 +2484,7 @@ namespace bgfx { namespace d3d11
 						// Remove swap chain from SwapChainPanel (nwh) if applicable
 						m_dxgi.removeSwapChain(m_scd, &m_swapChain);
 #endif
-						// sync removeSwapChain
-						DX_RELEASE(m_swapChain, 0);
+						DX_RELEASE(m_swapChain, m_swapChain.expected());
 						HRESULT hr = m_dxgi.createSwapChain(m_device
 							, m_scd
 							, &m_swapChain
