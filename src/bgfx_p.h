@@ -2916,7 +2916,7 @@ namespace bgfx
 		virtual uintptr_t getInternal(TextureHandle _handle) = 0;
 		virtual void destroyTexture(TextureHandle _handle) = 0;
 		virtual void createFrameBuffer(FrameBufferHandle _handle, uint8_t _num, const Attachment* _attachment) = 0;
-		virtual void createFrameBuffer(FrameBufferHandle _handle, void* _nwh, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat) = 0;
+		virtual void createFrameBuffer(FrameBufferHandle _handle, void* _nwh, void* _ndt, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat) = 0;
 		virtual void destroyFrameBuffer(FrameBufferHandle _handle) = 0;
 		virtual void createUniform(UniformHandle _handle, UniformType::Enum _type, uint16_t _num, const char* _name) = 0;
 		virtual void destroyUniform(UniformHandle _handle) = 0;
@@ -4598,7 +4598,7 @@ namespace bgfx
 			return handle;
 		}
 
-		BGFX_API_FUNC(FrameBufferHandle createFrameBuffer(void* _nwh, uint16_t _width, uint16_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat) )
+		BGFX_API_FUNC(FrameBufferHandle createFrameBuffer(void* _nwh, void* _ndt, uint16_t _width, uint16_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat) )
 		{
 			BGFX_MUTEX_SCOPE(m_resourceApiLock);
 
@@ -4611,6 +4611,7 @@ namespace bgfx
 				cmdbuf.write(handle);
 				cmdbuf.write(true);
 				cmdbuf.write(_nwh);
+				cmdbuf.write(_ndt);
 				cmdbuf.write(_width);
 				cmdbuf.write(_height);
 				cmdbuf.write(_format);

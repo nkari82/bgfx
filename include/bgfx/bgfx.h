@@ -3053,6 +3053,7 @@ namespace bgfx
 	///
 	FrameBufferHandle createFrameBuffer(
 		  void* _nwh
+		, void* _ndt
 		, uint16_t _width
 		, uint16_t _height
 		, TextureFormat::Enum _format      = TextureFormat::Count
