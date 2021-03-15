@@ -1594,13 +1594,9 @@ namespace bgfx { namespace d3d11
 				DX_RELEASE(m_annotation, 1);
 				DX_RELEASE_W(m_infoQueue, 0);
 				DX_RELEASE(m_msaaRt, 0);
-#if BX_PLATFORM_WINRT
-				// Remove swap chain from SwapChainPanel (nwh) if applicable
-				m_dxgi.removeSwapChain(m_scd, &m_swapChain);
-#endif
-				DX_RELEASE(m_swapChain, 0);
-				DX_RELEASE(m_deviceCtx, 0);
-				DX_RELEASE(m_device, 0);
+				DX_RELEASE(m_swapChain, m_swapChain.expected());
+				DX_RELEASE(m_device, m_device.expected());
+				DX_RELEASE(m_deviceCtx, m_deviceCtx.expected());
 
 #if USE_D3D11_DYNAMIC_LIB
 				if (NULL != m_d3d9Dll)
@@ -1685,10 +1681,6 @@ namespace bgfx { namespace d3d11
 			DX_RELEASE(m_annotation, 1);
 			DX_RELEASE_W(m_infoQueue, 0);
 			DX_RELEASE(m_msaaRt, 0);
-#if BX_PLATFORM_WINRT
-			// Remove swap chain from SwapChainPanel (nwh) if applicable
-			m_dxgi.removeSwapChain(m_scd, &m_swapChain);
-#endif
 			DX_RELEASE(m_swapChain, m_swapChain.expected());
 			DX_RELEASE(m_device, m_device.expected());
 			DX_RELEASE(m_deviceCtx, m_deviceCtx.expected());
@@ -2359,22 +2351,6 @@ namespace bgfx { namespace d3d11
 			}
 		}
 
-		void updateNativeWindow()
-		{
-#if BX_PLATFORM_WINRT
-			// SwapChainPanels can be dynamically updated
-			if (m_scd.ndt == reinterpret_cast<void*>(2)
-				&& (m_scd.nwh != g_platformData.nwh || m_scd.ndt != g_platformData.ndt))
-			{
-				// Remove swap chain from SwapChainPanel (nwh) if applicable
-				m_dxgi.removeSwapChain(m_scd, &m_swapChain);
-				// Update nwh after removing swap chain
-				m_scd.nwh = g_platformData.nwh;
-				m_scd.ndt = g_platformData.ndt;
-			}
-#endif
-		}
-
 		bool updateResolution(const Resolution& _resolution)
 		{
 			const bool suspended    = !!( _resolution.reset & BGFX_RESET_SUSPEND);
@@ -2480,12 +2456,7 @@ namespace bgfx { namespace d3d11
 						updateMsaa(m_scd.format);
 						m_scd.sampleDesc = s_msaa[(m_resolution.reset&BGFX_RESET_MSAA_MASK)>>BGFX_RESET_MSAA_SHIFT];
 
-#if BX_PLATFORM_WINRT
-						// Remove swap chain from SwapChainPanel (nwh) if applicable
-						m_dxgi.removeSwapChain(m_scd, &m_swapChain);
-#endif
-						// sync removeSwapChain
-						DX_RELEASE(m_swapChain, 0);
+						DX_RELEASE(m_swapChain, m_swapChain.expected());
 						HRESULT hr = m_dxgi.createSwapChain(m_device
 							, m_scd
 							, &m_swapChain
@@ -5516,7 +5487,6 @@ namespace bgfx { namespace d3d11
 			return;
 		}
 
-		updateNativeWindow();
 		if (updateResolution(_render->m_resolution) )
 		{
 			return;
