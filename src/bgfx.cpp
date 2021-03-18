@@ -22,7 +22,7 @@ namespace bgfx
 {
 #define BGFX_API_THREAD_MAGIC UINT32_C(0x78666762)
 
-#if BGFX_CONFIG_MULTITHREADED
+#if BGFX_CONFIG_MULTITHREADED && !defined(BGFX_CONFIG_NO_CHECK_THREAD)
 
 #	define BGFX_CHECK_API_THREAD()                                   \
 		BX_ASSERT(NULL != s_ctx, "Library is not initialized yet."); \
