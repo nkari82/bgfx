@@ -1755,7 +1755,7 @@ namespace bgfx { namespace d3d12
 			m_frameBuffers[_handle.idx].create(_num, _attachment);
 		}
 
-		void createFrameBuffer(FrameBufferHandle _handle, void* _nwh, void* _ndt, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat) override
+		void createFrameBuffer(FrameBufferHandle _handle, void* _nwh, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat) override
 		{
 			finishAll(true);
 
@@ -1771,7 +1771,7 @@ namespace bgfx { namespace d3d12
 
 			uint16_t denseIdx = m_numWindows++;
 			m_windows[denseIdx] = _handle;
-			m_frameBuffers[_handle.idx].create(denseIdx, _nwh,  _ndt, _width, _height, _format, _depthFormat);
+			m_frameBuffers[_handle.idx].create(denseIdx, _nwh, _width, _height, _format, _depthFormat);
 		}
 
 		void destroyFrameBuffer(FrameBufferHandle _handle) override
@@ -5207,7 +5207,7 @@ namespace bgfx { namespace d3d12
 		postReset();
 	}
 
-	void FrameBufferD3D12::create(uint16_t _denseIdx, void* _nwh, void* /*_ndt*/, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat)
+	void FrameBufferD3D12::create(uint16_t _denseIdx, void* _nwh, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat)
 	{
 		BX_UNUSED(_nwh, _width, _height, _depthFormat);
 

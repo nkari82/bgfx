@@ -1894,7 +1894,7 @@ namespace bgfx { namespace d3d11
 			m_frameBuffers[_handle.idx].create(_num, _attachment);
 		}
 
-		void createFrameBuffer(FrameBufferHandle _handle, void* _nwh, void* _ndt, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat) override
+		void createFrameBuffer(FrameBufferHandle _handle, void* _nwh, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat) override
 		{
 			for (uint32_t ii = 0, num = m_numWindows; ii < num; ++ii)
 			{
@@ -1908,7 +1908,7 @@ namespace bgfx { namespace d3d11
 
 			uint16_t denseIdx = m_numWindows++;
 			m_windows[denseIdx] = _handle;
-			m_frameBuffers[_handle.idx].create(denseIdx, _nwh, _ndt, _width, _height, _format, _depthFormat);
+			m_frameBuffers[_handle.idx].create(denseIdx, _nwh, _width, _height, _format, _depthFormat);
 		}
 
 		void destroyFrameBuffer(FrameBufferHandle _handle) override
@@ -4834,7 +4834,7 @@ namespace bgfx { namespace d3d11
 		postReset();
 	}
 
-	void FrameBufferD3D11::create(uint16_t _denseIdx, void* _nwh, void* _ndt, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat)
+	void FrameBufferD3D11::create(uint16_t _denseIdx, void* _nwh, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat)
 	{
 		SwapChainDesc scd;
 		bx::memCopy(&scd, &s_renderD3D11->m_scd, sizeof(SwapChainDesc) );
@@ -4842,7 +4842,6 @@ namespace bgfx { namespace d3d11
 		scd.width      = _width;
 		scd.height     = _height;
 		scd.nwh        = _nwh;
-		scd.ndt        = _ndt;
 		scd.sampleDesc = s_msaa[0];
 
 		ID3D11Device* device = s_renderD3D11->m_device;

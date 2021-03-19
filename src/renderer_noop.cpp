@@ -199,7 +199,7 @@ namespace bgfx { namespace noop
 		{
 		}
 
-		void createFrameBuffer(FrameBufferHandle /*_handle*/, void* /*_nwh*/, void* /*_ndt*/, uint32_t /*_width*/, uint32_t /*_height*/, TextureFormat::Enum /*_format*/, TextureFormat::Enum /*_depthFormat*/) override
+		void createFrameBuffer(FrameBufferHandle /*_handle*/, void* /*_nwh*/, uint32_t /*_width*/, uint32_t /*_height*/, TextureFormat::Enum /*_format*/, TextureFormat::Enum /*_depthFormat*/) override
 		{
 		}
 
