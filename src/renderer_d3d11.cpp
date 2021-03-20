@@ -1896,6 +1896,8 @@ namespace bgfx { namespace d3d11
 
 		void createFrameBuffer(FrameBufferHandle _handle, void* _nwh, void* _ndt, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat) override
 		{
+			setGraphicsDebuggerPresent(_ndt ? true : false);
+
 			for (uint32_t ii = 0, num = m_numWindows; ii < num; ++ii)
 			{
 				FrameBufferHandle handle = m_windows[ii];
