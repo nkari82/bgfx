@@ -610,9 +610,9 @@ namespace bgfx
 	{
 		PlatformData();
 
-		void* ndt;          //!< Native display type (*nix specific).
+		void* ndt;          //!< Native display type (*nix specific). UWP D3D swapchain panel
 		void* nwh;          //!< Native window handle. If `NULL` bgfx will create headless
-		                    ///  context/device if renderer API supports it.
+		                    ///  context/device if renderer API supports it. UWP core window
 		void* context;      //!< GL context, or D3D device. If `NULL`, bgfx will create context/device.
 		void* backBuffer;   //!< GL back-buffer, or D3D render target view. If `NULL` bgfx will
 		                    ///  create back-buffer color surface.
@@ -3053,6 +3053,7 @@ namespace bgfx
 	///
 	FrameBufferHandle createFrameBuffer(
 		  void* _nwh
+		, void* _ndt
 		, uint16_t _width
 		, uint16_t _height
 		, TextureFormat::Enum _format      = TextureFormat::Count

@@ -3187,6 +3187,9 @@ namespace bgfx
 						void* nwh;
 						_cmdbuf.read(nwh);
 
+						void* ndt;
+						_cmdbuf.read(ndt);
+
 						uint16_t width;
 						_cmdbuf.read(width);
 
@@ -3199,7 +3202,7 @@ namespace bgfx
 						TextureFormat::Enum depthFormat;
 						_cmdbuf.read(depthFormat);
 
-						m_renderCtx->createFrameBuffer(handle, nwh, width, height, format, depthFormat);
+						m_renderCtx->createFrameBuffer(handle, nwh, ndt, width, height, format, depthFormat);
 					}
 					else
 					{
@@ -4705,7 +4708,7 @@ namespace bgfx
 		return s_ctx->createFrameBuffer(_num, _attachment, _destroyTextures);
 	}
 
-	FrameBufferHandle createFrameBuffer(void* _nwh, uint16_t _width, uint16_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat)
+	FrameBufferHandle createFrameBuffer(void* _nwh, void* _ndt, uint16_t _width, uint16_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat)
 	{
 		BGFX_CHECK_CAPS(BGFX_CAPS_SWAP_CHAIN, "Swap chain is not supported!");
 		BX_WARN(_width > 0 && _height > 0
@@ -4723,6 +4726,7 @@ namespace bgfx
 			);
 		return s_ctx->createFrameBuffer(
 			  _nwh
+			, _ndt
 			, bx::max<uint16_t>(_width, 1)
 			, bx::max<uint16_t>(_height, 1)
 			, _format

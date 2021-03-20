@@ -14,6 +14,11 @@
 #	include <inspectable.h>
 #	if BX_PLATFORM_WINRT
 #		include <windows.ui.xaml.media.dxinterop.h>
+#		include <windows.ui.core.h>
+#		include <future>
+using namespace Windows::ApplicationModel::Core;
+using namespace ABI::Windows::Foundation;
+using namespace ABI::Windows::UI::Core;
 #	endif // BX_PLATFORM_WINRT
 #endif // !BX_PLATFORM_WINDOWS
 
@@ -468,10 +473,10 @@ namespace bgfx
 			}
 
 #	if BX_PLATFORM_WINRT
-			IInspectable *nativeWindow = reinterpret_cast<IInspectable*>(_scd.nwh);
+			IInspectable* swapChainPanel = reinterpret_cast<IInspectable*>(_scd.ndt);
 			ISwapChainPanelNative* swapChainPanelNative;
 
-			hr = nativeWindow->QueryInterface(
+			hr = swapChainPanel->QueryInterface(
 				  __uuidof(ISwapChainPanelNative)
 				, (void**)&swapChainPanelNative
 				);
@@ -481,7 +486,70 @@ namespace bgfx
 				// Swap Chain Panel
 				if (NULL != swapChainPanelNative)
 				{
+#if BGFX_CONFIG_MULTITHREADED
+					ICoreWindow* coreWindow = reinterpret_cast<ICoreWindow*>(_scd.nwh);
+					ICoreDispatcher* dispatcher;
+					hr = coreWindow->get_Dispatcher(&dispatcher);
+					
+					struct Handler : public IDispatchedHandler
+					{
+					private:
+						ISwapChainPanelNative* swapChainPanelNative_;
+						SwapChainI** swapChain_;
+
+					public:
+						Handler(ISwapChainPanelNative* swapChainPanelNative, SwapChainI** swapChain)
+							: swapChainPanelNative_(swapChainPanelNative)
+							, swapChain_(swapChain)
+						{}
+
+						HRESULT QueryInterface(REFIID, void**) override { return S_FALSE; }
+						ULONG AddRef() override { return 0; }
+						ULONG Release() override { return 0; }
+
+						HRESULT Invoke() override {
+							return swapChainPanelNative_->SetSwapChain(*swapChain_);
+						}
+					};
+
+					struct Complete : public IAsyncActionCompletedHandler
+					{
+					private:
+						std::promise<AsyncStatus>& promise_;
+
+					public:
+						Complete(std::promise<AsyncStatus>& promise) : promise_(promise) {}
+						HRESULT QueryInterface(REFIID, void**) override { return S_FALSE; }
+						ULONG AddRef() override { return 0; }
+						ULONG Release() override { return 0; }
+
+						HRESULT Invoke(IAsyncAction*, AsyncStatus asyncStatus) {
+							promise_.set_value(asyncStatus);
+							return S_OK;
+						}
+					};
+					
+					if (!FAILED(hr))
+					{
+						Handler handler(swapChainPanelNative, _swapChain);
+						IAsyncAction* action;
+						hr = dispatcher->RunAsync(CoreDispatcherPriority_High, &handler, &action);
+						if (!FAILED(hr))
+						{
+							std::promise<AsyncStatus> promise;
+							auto future = promise.get_future();
+							Complete complete(promise);
+							hr = action->put_Completed(&complete);
+							if (!FAILED(hr))
+							{
+								future.wait();
+								hr = action->GetResults();
+							}
+						}
+					}
+#else
 					hr = swapChainPanelNative->SetSwapChain(*_swapChain);
+#endif
 
 					if (FAILED(hr) )
 					{
@@ -498,7 +566,7 @@ namespace bgfx
 				// Swap Chain Background Panel
 				ISwapChainBackgroundPanelNative* swapChainBackgroundPanelNative = NULL;
 
-				hr = nativeWindow->QueryInterface(
+				hr = swapChainPanel->QueryInterface(
 					  __uuidof(ISwapChainBackgroundPanelNative)
 					, (void**)&swapChainBackgroundPanelNative
 					);
