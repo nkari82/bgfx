@@ -1039,6 +1039,7 @@ namespace bgfx { namespace d3d11
 					m_scd.nwh             = g_platformData.nwh;
 					m_scd.ndt             = g_platformData.ndt;
 					m_scd.windowed        = true;
+					setGraphicsDebuggerPresent(m_scd.ndt ? true : false);
 
 					if (NULL != m_scd.nwh)
 					{
