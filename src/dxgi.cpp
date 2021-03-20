@@ -440,7 +440,7 @@ namespace bgfx
 		scd.SampleDesc.Quality = 0;
 		scd.BufferUsage = _scd.bufferUsage;
 		scd.BufferCount = _scd.bufferCount;
-		scd.Scaling     = _scd.scaling;
+		scd.Scaling     = _scd.ndt ? DXGI_SCALING_STRETCH : _scd.scaling;
 		scd.SwapEffect  = _scd.swapEffect;
 		scd.AlphaMode   = _scd.alphaMode;
 		scd.Flags       = scdFlags;
