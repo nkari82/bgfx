@@ -523,7 +523,7 @@ namespace bgfx
 						ULONG AddRef() override { return 0; }
 						ULONG Release() override { return 0; }
 
-						HRESULT Invoke(IAsyncAction*, AsyncStatus asyncStatus) {
+						HRESULT Invoke(IAsyncAction*, AsyncStatus asyncStatus) override {
 							promise_.set_value(asyncStatus);
 							return S_OK;
 						}
