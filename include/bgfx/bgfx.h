@@ -3039,6 +3039,7 @@ namespace bgfx
 	/// Create frame buffer for multiple window rendering.
 	///
 	/// @param[in] _nwh OS' target native window handle.
+	/// @param[in] _ndt OS' target native display type.
 	/// @param[in] _width Window back buffer width.
 	/// @param[in] _height Window back buffer height.
 	/// @param[in] _format Window back buffer color format.
@@ -3057,6 +3058,30 @@ namespace bgfx
 		, uint16_t _width
 		, uint16_t _height
 		, TextureFormat::Enum _format      = TextureFormat::Count
+		, TextureFormat::Enum _depthFormat = TextureFormat::Count
+		);
+
+	/// Resize frame buffer for multiple window rendering.
+	///
+	/// @param[in] _nwh OS' target native window handle.
+	/// @param[in] _ndt OS' target native display type.
+	/// @param[in] _width Window back buffer width.
+	/// @param[in] _height Window back buffer height.
+	/// @param[in] _format Window back buffer color format.
+	/// @param[in] _depthFormat Window back buffer depth format.
+	///
+	/// @remarks
+	///   Frame buffer cannot be used for sampling.
+	///
+	/// @attention C99 equivalent is `bgfx_resize_frame_buffer_from_nwh`.
+	///
+	void resizeFrameBuffer(
+		  FrameBufferHandle _handle
+		, void* _nwh
+		, void* _ndt
+		, uint16_t _width
+		, uint16_t _height
+		, TextureFormat::Enum _format = TextureFormat::Count
 		, TextureFormat::Enum _depthFormat = TextureFormat::Count
 		);
 

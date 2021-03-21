@@ -1774,6 +1774,10 @@ namespace bgfx { namespace d3d12
 			m_frameBuffers[_handle.idx].create(denseIdx, _nwh, _width, _height, _format, _depthFormat);
 		}
 
+		void resizeFrameBuffer(FrameBufferHandle /*_handle*/, void* /*_nwh*/, void* /*_ndt*/, uint32_t /*_width*/, uint32_t /*_height*/, TextureFormat::Enum /*_format*/, TextureFormat::Enum /*_depthFormat*/) override
+		{
+		}
+		
 		void destroyFrameBuffer(FrameBufferHandle _handle) override
 		{
 			FrameBufferD3D12& frameBuffer = m_frameBuffers[_handle.idx];

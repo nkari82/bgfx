@@ -815,6 +815,7 @@ namespace bgfx
 			ResizeTexture,
 			CreateFrameBuffer,
 			CreateUniform,
+			ResizeFrameBuffer,
 			UpdateViewName,
 			InvalidateOcclusionQuery,
 			SetName,
@@ -2918,6 +2919,7 @@ namespace bgfx
 		virtual void createFrameBuffer(FrameBufferHandle _handle, uint8_t _num, const Attachment* _attachment) = 0;
 		virtual void createFrameBuffer(FrameBufferHandle _handle, void* _nwh, void* _ndt, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat) = 0;
 		virtual void destroyFrameBuffer(FrameBufferHandle _handle) = 0;
+		virtual void resizeFrameBuffer(FrameBufferHandle _handle, void* _nwh, void* _ndt, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat) = 0;
 		virtual void createUniform(UniformHandle _handle, UniformType::Enum _type, uint16_t _num, const char* _name) = 0;
 		virtual void destroyUniform(UniformHandle _handle) = 0;
 		virtual void requestScreenShot(FrameBufferHandle _handle, const char* _filePath) = 0;
@@ -4623,6 +4625,24 @@ namespace bgfx
 			}
 
 			return handle;
+		}
+
+		BGFX_API_FUNC(void resizeFrameBuffer(FrameBufferHandle _handle, void* _nwh, void* _ndt, uint16_t _width, uint16_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat))
+		{
+			BGFX_MUTEX_SCOPE(m_resourceApiLock);
+			BX_ASSERT(_nwh, "");
+
+			if (isValid(_handle))
+			{
+				CommandBuffer& cmdbuf = getCommandBuffer(CommandBuffer::ResizeFrameBuffer);
+				cmdbuf.write(_handle);
+				cmdbuf.write(_nwh);
+				cmdbuf.write(_ndt);
+				cmdbuf.write(_width);
+				cmdbuf.write(_height);
+				cmdbuf.write(_format);
+				cmdbuf.write(_depthFormat);
+			}
 		}
 
 		BGFX_API_FUNC(void setName(FrameBufferHandle _handle, const bx::StringView& _name) )
