@@ -1890,6 +1890,7 @@ namespace bgfx
 		{
 			TextureHandle m_th[BGFX_CONFIG_MAX_FRAME_BUFFER_ATTACHMENTS];
 			void* m_nwh;
+			void* m_ndt;
 		} un;
 
 		bool m_window;
@@ -4620,6 +4621,7 @@ namespace bgfx
 				FrameBufferRef& ref = m_frameBufferRef[handle.idx];
 				ref.m_window = true;
 				ref.un.m_nwh = _nwh;
+				ref.un.m_ndt = _ndt;
 			}
 
 			return handle;
