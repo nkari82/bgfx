@@ -490,55 +490,34 @@ namespace bgfx
 					ICoreWindow* coreWindow = reinterpret_cast<ICoreWindow*>(_scd.nwh);
 					ICoreDispatcher* dispatcher;
 					hr = coreWindow->get_Dispatcher(&dispatcher);
-					
-					struct Handler : public IDispatchedHandler
+
+					struct Handler : public IDispatchedHandler, public IAsyncActionCompletedHandler
 					{
 					private:
-						ISwapChainPanelNative* swapChainPanelNative_;
-						SwapChainI** swapChain_;
+						std::function<HRESULT(AsyncStatus)> handler_;
 
 					public:
-						Handler(ISwapChainPanelNative* swapChainPanelNative, SwapChainI** swapChain)
-							: swapChainPanelNative_(swapChainPanelNative)
-							, swapChain_(swapChain)
-						{}
-
+						Handler(std::function<HRESULT(AsyncStatus)>&& handler) : handler_(std::move(handler)) {}
 						HRESULT QueryInterface(REFIID, void**) override { return S_FALSE; }
 						ULONG AddRef() override { return 0; }
 						ULONG Release() override { return 0; }
-
-						HRESULT Invoke() override {
-							return swapChainPanelNative_->SetSwapChain(*swapChain_);
-						}
-					};
-
-					struct Complete : public IAsyncActionCompletedHandler
-					{
-					private:
-						std::promise<AsyncStatus>& promise_;
-
-					public:
-						Complete(std::promise<AsyncStatus>& promise) : promise_(promise) {}
-						HRESULT QueryInterface(REFIID, void**) override { return S_FALSE; }
-						ULONG AddRef() override { return 0; }
-						ULONG Release() override { return 0; }
-
-						HRESULT Invoke(IAsyncAction*, AsyncStatus asyncStatus) override {
-							promise_.set_value(asyncStatus);
-							return S_OK;
-						}
+						HRESULT Invoke() override { return handler_(AsyncStatus::Completed); }
+						HRESULT Invoke(IAsyncAction*, AsyncStatus status) override { return handler_(status); }
 					};
 					
 					if (!FAILED(hr))
 					{
-						Handler handler(swapChainPanelNative, _swapChain);
+						Handler handler([&swapChainPanelNative, &_swapChain](AsyncStatus) {
+							return swapChainPanelNative->SetSwapChain(*_swapChain);
+						});
+
 						IAsyncAction* action;
 						hr = dispatcher->RunAsync(CoreDispatcherPriority_High, &handler, &action);
 						if (!FAILED(hr))
 						{
-							std::promise<AsyncStatus> promise;
+							std::promise<void> promise;
 							auto future = promise.get_future();
-							Complete complete(promise);
+							Handler complete([&promise](AsyncStatus){ promise.set_value(); return S_OK; });
 							hr = action->put_Completed(&complete);
 							if (!FAILED(hr))
 							{
