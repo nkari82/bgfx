@@ -1903,7 +1903,8 @@ namespace bgfx { namespace d3d11
 			{
 				FrameBufferHandle handle = m_windows[ii];
 				if (isValid(handle)
-				&&  m_frameBuffers[handle.idx].m_nwh == _nwh)
+				&& m_frameBuffers[handle.idx].m_nwh == _nwh
+				&& m_frameBuffers[handle.idx].m_ndt == _ndt)
 				{
 					destroyFrameBuffer(handle);
 				}
@@ -4893,6 +4894,7 @@ namespace bgfx { namespace d3d11
 
 		m_srv[0]   = NULL;
 		m_nwh      = _nwh;
+		m_ndt      = _ndt;
 		m_denseIdx = _denseIdx;
 		m_num      = 1;
 	}
@@ -4905,6 +4907,7 @@ namespace bgfx { namespace d3d11
 
 		m_num   = 0;
 		m_nwh   = NULL;
+		m_ndt   = NULL;
 		m_numTh = 0;
 		m_needPresent = false;
 

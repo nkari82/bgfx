@@ -325,6 +325,7 @@ namespace bgfx { namespace d3d11
 			: m_dsv(NULL)
 			, m_swapChain(NULL)
 			, m_nwh(NULL)
+			, m_ndt(NULL)
 			, m_width(0)
 			, m_height(0)
 			, m_denseIdx(UINT16_MAX)
@@ -351,6 +352,7 @@ namespace bgfx { namespace d3d11
 		ID3D11DepthStencilView*    m_dsv;
 		Dxgi::SwapChainI* m_swapChain;
 		void* m_nwh;
+		void* m_ndt;
 		uint32_t m_width;
 		uint32_t m_height;
 
