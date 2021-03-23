@@ -4681,7 +4681,7 @@ namespace bgfx
 			return BGFX_INVALID_HANDLE;
 		}
 
-		BGFX_API_FUNC(void destroyFrameBuffer(FrameBufferHandle _handle) )
+		BGFX_API_FUNC(void destroyFrameBuffer(FrameBufferHandle _handle, DestroyFn&& _destroyFn) )
 		{
 			BGFX_MUTEX_SCOPE(m_resourceApiLock);
 
@@ -4691,6 +4691,14 @@ namespace bgfx
 
 			CommandBuffer& cmdbuf = getCommandBuffer(CommandBuffer::DestroyFrameBuffer);
 			cmdbuf.write(_handle);
+			cmdbuf.write(NULL != _destroyFn ? true : false);
+
+			if (NULL != _destroyFn)
+			{
+				DestroyFn* cb = (DestroyFn*)BX_ALLOC(g_allocator, sizeof(DestroyFn));
+				::new(cb)DestroyFn(std::move(_destroyFn));
+				cmdbuf.write(cb);
+			}
 
 			FrameBufferRef& ref = m_frameBufferRef[_handle.idx];
 			ref.m_name.clear();

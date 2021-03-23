@@ -3237,6 +3237,18 @@ namespace bgfx
 					_cmdbuf.read(handle);
 
 					m_renderCtx->destroyFrameBuffer(handle);
+
+					bool hasCb;
+					_cmdbuf.read(hasCb);
+
+					if (hasCb)
+					{
+						DestroyFn* cb;
+						_cmdbuf.read(cb);
+						(*cb)();
+						cb->~DestroyFn();
+						BX_FREE(g_allocator, cb);
+					}
 				}
 				break;
 
@@ -4814,9 +4826,9 @@ namespace bgfx
 		return s_ctx->getTexture(_handle, _attachment);
 	}
 
-	void destroy(FrameBufferHandle _handle)
+	void destroy(FrameBufferHandle _handle, DestroyFn&& _destroyFn)
 	{
-		s_ctx->destroyFrameBuffer(_handle);
+		s_ctx->destroyFrameBuffer(_handle, std::move(_destroyFn));
 	}
 
 	UniformHandle createUniform(const char* _name, UniformType::Enum _type, uint16_t _num)

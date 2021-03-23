@@ -703,6 +703,10 @@ namespace bgfx
 	/// 
 	typedef std::function<void(void* _ptr)> CreateFn;
 
+	/// Resource destroy callback
+	/// 
+	typedef std::function<void()> DestroyFn;
+
 	/// Memory release callback.
 	///
 	/// param[in] _ptr Pointer to allocated data.
@@ -3128,7 +3132,7 @@ namespace bgfx
 	///
 	/// @attention C99 equivalent is `bgfx_destroy_frame_buffer`.
 	///
-	void destroy(FrameBufferHandle _handle);
+	void destroy(FrameBufferHandle _handle, DestroyFn&& _destroyFn = NULL);
 
 	/// Create shader uniform parameter.
 	///
