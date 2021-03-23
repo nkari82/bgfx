@@ -710,7 +710,7 @@ namespace bgfx
 	///
 	/// @attention C99 equivalent is `bgfx_release_fn_t`.
 	///
-	typedef void (*ReleaseFn)(void* _ptr, void* _userData);
+	typedef std::function<void(void* _ptr, void* _userData)> ReleaseFn;
 
 	/// Memory must be obtained by calling `bgfx::alloc`, `bgfx::copy`, or `bgfx::makeRef`.
 	///
@@ -2076,7 +2076,7 @@ namespace bgfx
 	const Memory* makeRef(
 		  const void* _data
 		, uint32_t _size
-		, ReleaseFn _releaseFn = NULL
+		, ReleaseFn&& _releaseFn = NULL
 		, void* _userData = NULL
 		);
 
