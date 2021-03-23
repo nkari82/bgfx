@@ -4036,12 +4036,12 @@ namespace bgfx
 		void* userData;
 	};
 
-	const Memory* makeRef(const void* _data, uint32_t _size, ReleaseFn _releaseFn, void* _userData)
+	const Memory* makeRef(const void* _data, uint32_t _size, ReleaseFn&& _releaseFn, void* _userData)
 	{
 		MemoryRef* memRef = (MemoryRef*)BX_ALLOC(g_allocator, sizeof(MemoryRef) );
 		memRef->mem.size  = _size;
 		memRef->mem.data  = (uint8_t*)_data;
-		memRef->releaseFn = _releaseFn;
+		::new(&memRef->releaseFn)ReleaseFn(std::move(_releaseFn));
 		memRef->userData  = _userData;
 		return &memRef->mem;
 	}
@@ -4062,6 +4062,7 @@ namespace bgfx
 			{
 				memRef->releaseFn(mem->data, memRef->userData);
 			}
+			(&memRef->releaseFn)->~ReleaseFn();
 		}
 		BX_FREE(g_allocator, mem);
 	}
