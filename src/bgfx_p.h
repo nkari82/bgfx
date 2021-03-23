@@ -4600,7 +4600,7 @@ namespace bgfx
 			return handle;
 		}
 
-		BGFX_API_FUNC(FrameBufferHandle createFrameBuffer(void* _nwh, void* _ndt, uint16_t _width, uint16_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat) )
+		BGFX_API_FUNC(FrameBufferHandle createFrameBuffer(void* _nwh, void* _ndt, uint16_t _width, uint16_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat, CreateFn&& _createFn) )
 		{
 			BGFX_MUTEX_SCOPE(m_resourceApiLock);
 
@@ -4618,6 +4618,14 @@ namespace bgfx
 				cmdbuf.write(_height);
 				cmdbuf.write(_format);
 				cmdbuf.write(_depthFormat);
+				cmdbuf.write(NULL != _createFn ? true : false);
+
+				if (NULL != _createFn)
+				{
+					CreateFn* cb = (CreateFn*)BX_ALLOC(g_allocator, sizeof(CreateFn));
+					::new(cb)CreateFn(std::move(_createFn));
+					cmdbuf.write(cb);
+				}
 
 				FrameBufferRef& ref = m_frameBufferRef[handle.idx];
 				ref.m_window = true;

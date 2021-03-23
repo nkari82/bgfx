@@ -4920,7 +4920,7 @@ namespace bgfx { namespace d3d11
 		ID3D11Device* device = s_renderD3D11->m_device;
 		DXGI_FORMAT format = TextureFormat::Count == _format ? scd.format : s_textureFormat[_format].m_fmt;
 		HRESULT hr = m_swapChain->ResizeBuffers(scd.bufferCount, _width, _height, format, scd.flags);
-		if (FAILED(hr)) return;
+		BX_ASSERT(SUCCEEDED(hr), "");
 
 		ID3D11Resource* ptr;
 		DX_CHECK(m_swapChain->GetBuffer(0, IID_ID3D11Texture2D, (void**)&ptr));

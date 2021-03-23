@@ -9,6 +9,7 @@
 #include <stdarg.h> // va_list
 #include <stdint.h> // uint32_t
 #include <stdlib.h> // NULL
+#include <functional>
 
 #include "defines.h"
 
@@ -696,6 +697,11 @@ namespace bgfx
 		/// custom allocator is thread safe.
 		bx::AllocatorI* allocator;
 	};
+
+	/// Resource create callback
+	/// param[in] _ptr Pointer to platform specified data
+	/// 
+	typedef std::function<void(void* _ptr)> CreateFn;
 
 	/// Memory release callback.
 	///
@@ -3059,6 +3065,7 @@ namespace bgfx
 		, uint16_t _height
 		, TextureFormat::Enum _format      = TextureFormat::Count
 		, TextureFormat::Enum _depthFormat = TextureFormat::Count
+		, CreateFn&& _createFn = NULL
 		);
 
 	/// Resize frame buffer for multiple window rendering.
