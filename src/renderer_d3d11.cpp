@@ -4932,8 +4932,8 @@ namespace bgfx { namespace d3d11
 			: DXGI_FORMAT_D24_UNORM_S8_UINT
 			;
 		D3D11_TEXTURE2D_DESC dsd;
-		dsd.Width = scd.width;
-		dsd.Height = scd.height;
+		dsd.Width = _width;
+		dsd.Height = _height;
 		dsd.MipLevels = 1;
 		dsd.ArraySize = 1;
 		dsd.Format = fmtDsv;
