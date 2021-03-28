@@ -3202,7 +3202,10 @@ namespace bgfx
 						TextureFormat::Enum depthFormat;
 						_cmdbuf.read(depthFormat);
 
-						m_renderCtx->createFrameBuffer(handle, nwh, ndt, width, height, format, depthFormat);
+						uint32_t reset;
+						_cmdbuf.read(reset);
+
+						m_renderCtx->createFrameBuffer(handle, nwh, ndt, width, height, format, depthFormat, reset);
 
 						bool hasCb;
 						_cmdbuf.read(hasCb);
@@ -3304,13 +3307,7 @@ namespace bgfx
 					uint16_t height;
 					_cmdbuf.read(height);
 
-					TextureFormat::Enum format;
-					_cmdbuf.read(format);
-
-					TextureFormat::Enum depthFormat;
-					_cmdbuf.read(depthFormat);
-
-					m_renderCtx->resizeFrameBuffer(handle, nwh, ndt, width, height, format, depthFormat);
+					m_renderCtx->resizeFrameBuffer(handle, nwh, ndt, width, height);
 				}
 				break;
 
@@ -4762,7 +4759,7 @@ namespace bgfx
 		return s_ctx->createFrameBuffer(_num, _attachment, _destroyTextures);
 	}
 
-	FrameBufferHandle createFrameBuffer(void* _nwh, void* _ndt, uint16_t _width, uint16_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat, CreateFn&& _createFn)
+	FrameBufferHandle createFrameBuffer(void* _nwh, void* _ndt, uint16_t _width, uint16_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat, uint32_t _reset, CreateFn&& _createFn)
 	{
 		BGFX_CHECK_CAPS(BGFX_CAPS_SWAP_CHAIN, "Swap chain is not supported!");
 		BX_WARN(_width > 0 && _height > 0
@@ -4785,11 +4782,12 @@ namespace bgfx
 			, bx::max<uint16_t>(_height, 1)
 			, _format
 			, _depthFormat
+			, _reset
 			, std::move(_createFn)
 			);
 	}
 
-	void resizeFrameBuffer(FrameBufferHandle _handle, void* _nwh, void* _ndt, uint16_t _width, uint16_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat)
+	void resizeFrameBuffer(FrameBufferHandle _handle, void* _nwh, void* _ndt, uint16_t _width, uint16_t _height)
 	{
 		BGFX_CHECK_CAPS(BGFX_CAPS_SWAP_CHAIN, "Swap chain is not supported!");
 		BX_WARN(_width > 0 && _height > 0
@@ -4797,22 +4795,13 @@ namespace bgfx
 			, _width
 			, _height
 		);
-		BX_ASSERT(_format == TextureFormat::Count || bimg::isColor(bimg::TextureFormat::Enum(_format))
-			, "Invalid texture format for color (%s)."
-			, bimg::getName(bimg::TextureFormat::Enum(_format))
-		);
-		BX_ASSERT(_depthFormat == TextureFormat::Count || bimg::isDepth(bimg::TextureFormat::Enum(_depthFormat))
-			, "Invalid texture format for depth (%s)."
-			, bimg::getName(bimg::TextureFormat::Enum(_depthFormat))
-		);
+
 		return s_ctx->resizeFrameBuffer(
 			  _handle
 			, _nwh
 			, _ndt
 			, bx::max<uint16_t>(_width, 1)
 			, bx::max<uint16_t>(_height, 1)
-			, _format
-			, _depthFormat
 		);
 	}
 

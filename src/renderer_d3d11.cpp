@@ -1895,7 +1895,7 @@ namespace bgfx { namespace d3d11
 			m_frameBuffers[_handle.idx].create(_num, _attachment);
 		}
 
-		void createFrameBuffer(FrameBufferHandle _handle, void* _nwh, void* _ndt, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat) override
+		void createFrameBuffer(FrameBufferHandle _handle, void* _nwh, void* _ndt, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat, uint32_t _reset) override
 		{
 			setGraphicsDebuggerPresent(_ndt ? true : false);
 
@@ -1912,14 +1912,14 @@ namespace bgfx { namespace d3d11
 
 			uint16_t denseIdx = m_numWindows++;
 			m_windows[denseIdx] = _handle;
-			m_frameBuffers[_handle.idx].create(denseIdx, _nwh, _ndt, _width, _height, _format, _depthFormat);
+			m_frameBuffers[_handle.idx].create(denseIdx, _nwh, _ndt, _width, _height, _format, _depthFormat, _reset);
 		}
 
-		void resizeFrameBuffer(FrameBufferHandle _handle, void* _nwh, void* _ndt, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat)
+		void resizeFrameBuffer(FrameBufferHandle _handle, void* _nwh, void* _ndt, uint32_t _width, uint32_t _height)
 		{
 			setGraphicsDebuggerPresent(_ndt ? true : false);
 
-			m_frameBuffers[_handle.idx].resize(_nwh, _ndt, _width, _height, _format, _depthFormat);
+			m_frameBuffers[_handle.idx].resize(_nwh, _ndt, _width, _height);
 		}
 
 		void destroyFrameBuffer(FrameBufferHandle _handle) override
@@ -4845,7 +4845,7 @@ namespace bgfx { namespace d3d11
 		postReset();
 	}
 
-	void FrameBufferD3D11::create(uint16_t _denseIdx, void* _nwh, void* _ndt, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat)
+	void FrameBufferD3D11::create(uint16_t _denseIdx, void* _nwh, void* _ndt, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat, uint32_t _reset)
 	{
 		SwapChainDesc scd;
 		bx::memCopy(&scd, &s_renderD3D11->m_scd, sizeof(SwapChainDesc) );
@@ -4873,9 +4873,26 @@ namespace bgfx { namespace d3d11
 			) );
 #endif // BX_PLATFORM_WINDOWS
 
+		const DXGI_SAMPLE_DESC& sampleDesc = s_msaa[(_reset & BGFX_RESET_MSAA_MASK) >> BGFX_RESET_MSAA_SHIFT];
+		if (1 < sampleDesc.Count)
+		{
+			D3D11_TEXTURE2D_DESC desc;
+			desc.Width = scd.width;
+			desc.Height = scd.height;
+			desc.MipLevels = 1;
+			desc.ArraySize = 1;
+			desc.Format = scd.format;
+			desc.SampleDesc = sampleDesc;
+			desc.Usage = D3D11_USAGE_DEFAULT;
+			desc.BindFlags = D3D11_BIND_RENDER_TARGET;
+			desc.CPUAccessFlags = 0;
+			desc.MiscFlags = 0;
+			DX_CHECK(s_renderD3D11->m_device->CreateTexture2D(&desc, NULL, &m_msaaRt));
+		}
+
 		ID3D11Resource* ptr;
 		DX_CHECK(m_swapChain->GetBuffer(0, IID_ID3D11Texture2D, (void**)&ptr) );
-		DX_CHECK(device->CreateRenderTargetView(ptr, NULL, &m_rtv[0]) );
+		DX_CHECK(device->CreateRenderTargetView(NULL == m_msaaRt ? ptr : m_msaaRt, NULL, &m_rtv[0]));
 		DX_RELEASE(ptr, 0);
 
 		DXGI_FORMAT fmtDsv = bimg::isDepth(bimg::TextureFormat::Enum(_depthFormat) )
@@ -4888,7 +4905,7 @@ namespace bgfx { namespace d3d11
 		dsd.MipLevels  = 1;
 		dsd.ArraySize  = 1;
 		dsd.Format     = fmtDsv;
-		dsd.SampleDesc = scd.sampleDesc;
+		dsd.SampleDesc = sampleDesc;
 		dsd.Usage      = D3D11_USAGE_DEFAULT;
 		dsd.BindFlags  = D3D11_BIND_DEPTH_STENCIL;
 		dsd.CPUAccessFlags = 0;
@@ -4904,31 +4921,51 @@ namespace bgfx { namespace d3d11
 		m_ndt      = _ndt;
 		m_denseIdx = _denseIdx;
 		m_num      = 1;
+		m_format = _format;
+		m_depthFormat = _depthFormat;
+		m_reset = _reset;
 	}
 
-	void FrameBufferD3D11::resize(void* _nwh, void* _ndt, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat)
+	void FrameBufferD3D11::resize(void* _nwh, void* _ndt, uint32_t _width, uint32_t _height)
 	{
 		if (NULL == m_swapChain
 			|| _nwh != m_nwh
 			|| _ndt != m_ndt)
 			return;
 
+		DX_RELEASE(m_msaaRt, 0);
 		DX_RELEASE(m_rtv[0], 0);
 		DX_RELEASE(m_dsv, 0);
 
 		const SwapChainDesc& scd = s_renderD3D11->m_scd;
 		ID3D11Device* device = s_renderD3D11->m_device;
-		DXGI_FORMAT format = TextureFormat::Count == _format ? scd.format : s_textureFormat[_format].m_fmt;
-		HRESULT hr = m_swapChain->ResizeBuffers(scd.bufferCount, _width, _height, format, scd.flags);
-		BX_ASSERT(SUCCEEDED(hr), "");
+		DXGI_FORMAT format = TextureFormat::Count == m_format ? scd.format : s_textureFormat[m_format].m_fmt;
+		DX_CHECK(m_swapChain->ResizeBuffers(scd.bufferCount, _width, _height, format, scd.flags));
+
+		const DXGI_SAMPLE_DESC& sampleDesc = s_msaa[(m_reset & BGFX_RESET_MSAA_MASK) >> BGFX_RESET_MSAA_SHIFT];
+		if (1 < sampleDesc.Count)
+		{
+			D3D11_TEXTURE2D_DESC desc;
+			desc.Width = _width;
+			desc.Height = _height;
+			desc.MipLevels = 1;
+			desc.ArraySize = 1;
+			desc.Format = format;
+			desc.SampleDesc = sampleDesc;
+			desc.Usage = D3D11_USAGE_DEFAULT;
+			desc.BindFlags = D3D11_BIND_RENDER_TARGET;
+			desc.CPUAccessFlags = 0;
+			desc.MiscFlags = 0;
+			DX_CHECK(s_renderD3D11->m_device->CreateTexture2D(&desc, NULL, &m_msaaRt));
+		}
 
 		ID3D11Resource* ptr;
 		DX_CHECK(m_swapChain->GetBuffer(0, IID_ID3D11Texture2D, (void**)&ptr));
-		DX_CHECK(device->CreateRenderTargetView(ptr, NULL, &m_rtv[0]));
+		DX_CHECK(device->CreateRenderTargetView(NULL == m_msaaRt ? ptr : m_msaaRt, NULL, &m_rtv[0]));
 		DX_RELEASE(ptr, 0);
 
-		DXGI_FORMAT fmtDsv = bimg::isDepth(bimg::TextureFormat::Enum(_depthFormat))
-			? s_textureFormat[_depthFormat].m_fmtDsv
+		DXGI_FORMAT fmtDsv = bimg::isDepth(bimg::TextureFormat::Enum(m_depthFormat))
+			? s_textureFormat[m_depthFormat].m_fmtDsv
 			: DXGI_FORMAT_D24_UNORM_S8_UINT
 			;
 		D3D11_TEXTURE2D_DESC dsd;
@@ -4937,7 +4974,7 @@ namespace bgfx { namespace d3d11
 		dsd.MipLevels = 1;
 		dsd.ArraySize = 1;
 		dsd.Format = fmtDsv;
-		dsd.SampleDesc = scd.sampleDesc;
+		dsd.SampleDesc = sampleDesc;
 		dsd.Usage = D3D11_USAGE_DEFAULT;
 		dsd.BindFlags = D3D11_BIND_DEPTH_STENCIL;
 		dsd.CPUAccessFlags = 0;
@@ -4953,6 +4990,7 @@ namespace bgfx { namespace d3d11
 	{
 		preReset(true);
 
+		DX_RELEASE(m_msaaRt, 0);
 		DX_RELEASE(m_swapChain, 0);
 
 		m_num   = 0;
@@ -5259,6 +5297,18 @@ namespace bgfx { namespace d3d11
 	{
 		if (m_needPresent)
 		{
+			if (NULL != m_msaaRt)
+			{
+				DXGI_FORMAT format = TextureFormat::Count == m_format
+					? s_renderD3D11->m_scd.format
+					: s_textureFormat[m_format].m_fmt;
+
+				ID3D11Texture2D* backBufferColor;
+				DX_CHECK(m_swapChain->GetBuffer(0, IID_ID3D11Texture2D, (void**)&backBufferColor));
+				s_renderD3D11->m_deviceCtx->ResolveSubresource(backBufferColor, 0, m_msaaRt, 0, format);
+				DX_RELEASE(backBufferColor, 0);
+			}
+			
 			HRESULT hr = m_swapChain->Present(_syncInterval, 0);
 			hr = !isLost(hr) ? S_OK : hr;
 			m_needPresent = false;

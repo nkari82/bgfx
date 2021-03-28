@@ -3054,6 +3054,8 @@ namespace bgfx
 	/// @param[in] _height Window back buffer height.
 	/// @param[in] _format Window back buffer color format.
 	/// @param[in] _depthFormat Window back buffer depth format.
+	/// @param[in] _flags See: `BGFX_RESET_*` for more info.
+	///   - `BGFX_RESET_MSAA_X[2/4/8/16]` - Enable 2, 4, 8 or 16 x MSAA.
 	///
 	/// @returns Handle to frame buffer object.
 	///
@@ -3069,6 +3071,7 @@ namespace bgfx
 		, uint16_t _height
 		, TextureFormat::Enum _format      = TextureFormat::Count
 		, TextureFormat::Enum _depthFormat = TextureFormat::Count
+		, uint32_t _reset = BGFX_RESET_NONE
 		, CreateFn&& _createFn = NULL
 		);
 
@@ -3078,8 +3081,6 @@ namespace bgfx
 	/// @param[in] _ndt OS' target native display type.
 	/// @param[in] _width Window back buffer width.
 	/// @param[in] _height Window back buffer height.
-	/// @param[in] _format Window back buffer color format.
-	/// @param[in] _depthFormat Window back buffer depth format.
 	///
 	/// @remarks
 	///   Frame buffer cannot be used for sampling.
@@ -3092,8 +3093,6 @@ namespace bgfx
 		, void* _ndt
 		, uint16_t _width
 		, uint16_t _height
-		, TextureFormat::Enum _format = TextureFormat::Count
-		, TextureFormat::Enum _depthFormat = TextureFormat::Count
 		);
 
 	/// Set frame buffer debug name.

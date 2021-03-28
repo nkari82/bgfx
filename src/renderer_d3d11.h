@@ -324,10 +324,14 @@ namespace bgfx { namespace d3d11
 		FrameBufferD3D11()
 			: m_dsv(NULL)
 			, m_swapChain(NULL)
+			, m_msaaRt(NULL)
 			, m_nwh(NULL)
 			, m_ndt(NULL)
 			, m_width(0)
 			, m_height(0)
+			, m_format(TextureFormat::Count)
+			, m_depthFormat(TextureFormat::Count)
+			, m_reset(0)
 			, m_denseIdx(UINT16_MAX)
 			, m_num(0)
 			, m_numTh(0)
@@ -337,8 +341,8 @@ namespace bgfx { namespace d3d11
 		}
 
 		void create(uint8_t _num, const Attachment* _attachment);
-		void create(uint16_t _denseIdx, void* _nwh, void* _ndt, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat);
-		void resize(void* _nwh, void* _ndt, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat);
+		void create(uint16_t _denseIdx, void* _nwh, void* _ndt, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat, uint32_t _reset);
+		void resize(void* _nwh, void* _ndt, uint32_t _width, uint32_t _height);
 		uint16_t destroy();
 		void preReset(bool _force = false);
 		void postReset();
@@ -352,10 +356,14 @@ namespace bgfx { namespace d3d11
 		ID3D11ShaderResourceView*  m_srv[BGFX_CONFIG_MAX_FRAME_BUFFER_ATTACHMENTS-1];
 		ID3D11DepthStencilView*    m_dsv;
 		Dxgi::SwapChainI* m_swapChain;
+		ID3D11Texture2D* m_msaaRt;
 		void* m_nwh;
 		void* m_ndt;
 		uint32_t m_width;
 		uint32_t m_height;
+		TextureFormat::Enum m_format;
+		TextureFormat::Enum m_depthFormat;
+		uint32_t m_reset;
 
 		Attachment m_attachment[BGFX_CONFIG_MAX_FRAME_BUFFER_ATTACHMENTS];
 		uint16_t m_denseIdx;
