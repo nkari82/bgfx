@@ -413,6 +413,7 @@ namespace bgfx { namespace d3d11
 	static const GUID IID_ID3D11InfoQueue           = { 0x6543dbb6, 0x1b48, 0x42f5, { 0xab, 0x82, 0xe9, 0x7e, 0xc7, 0x43, 0x26, 0xf6 } };
 	static const GUID IID_IDXGIDeviceRenderDoc      = { 0xa7aa6116, 0x9c8d, 0x4bba, { 0x90, 0x83, 0xb4, 0xd8, 0x16, 0xb7, 0x1b, 0x78 } };
 	static const GUID IID_ID3DUserDefinedAnnotation = { 0xb2daad8b, 0x03d4, 0x4dbf, { 0x95, 0xeb, 0x32, 0xab, 0x4b, 0x63, 0xd0, 0xab } };
+	static const GUID IID_ID3D11ShaderResourceView = { 0xb0e06fe0, 0x8192, 0x4e1a, { 0xb1, 0xca, 0x36, 0xd7, 0x41, 0x47, 0x10, 0xb2 } };
 
 	enum D3D11_FORMAT_SUPPORT2
 	{
@@ -4669,28 +4670,47 @@ namespace bgfx { namespace d3d11
 
 		s_renderD3D11->m_srvUavLru.invalidateWithParent(getHandle().idx);
 		DX_RELEASE(m_rt, 0);
-		DX_RELEASE(m_srv, 0);
 		DX_RELEASE(m_uav, 0);
-		if (0 == (m_flags & BGFX_SAMPLER_INTERNAL_SHARED) )
+		if (0 == (m_sharedFlags & SharedFlags::SRV))
+		{
+			DX_RELEASE(m_srv, 0);
+		}
+
+		if (0 == (m_sharedFlags & SharedFlags::Texture))
 		{
 			DX_RELEASE(m_ptr, 0);
 		}
+
+		m_srv = NULL;
+		m_ptr = NULL;
 	}
 
 	void TextureD3D11::overrideInternal(uintptr_t _ptr)
 	{
 		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-		const bool readable = (m_srv != NULL);
+		const bool readable = (m_srv != NULL) && !(m_sharedFlags & SharedFlags::SRV);
 		if (readable) {
 			m_srv->GetDesc(&srvDesc);
 		}
 
 		destroy();
 		m_flags |= BGFX_SAMPLER_INTERNAL_SHARED;
-		m_ptr = (ID3D11Resource*)_ptr;
+		m_sharedFlags = SharedFlags::Texture;
 
-		if (readable) {
-			s_renderD3D11->m_device->CreateShaderResourceView(m_ptr, &srvDesc, &m_srv);
+		IUnknown* unkown = reinterpret_cast<IUnknown*>(_ptr);
+		if (SUCCEEDED(unkown->QueryInterface(IID_ID3D11ShaderResourceView, (void**)&m_srv)))
+		{
+			m_sharedFlags |= SharedFlags::SRV;
+			m_srv->GetResource(&m_ptr);
+			m_ptr->Release();
+			m_srv->Release();
+		}
+		else
+		{
+			m_ptr = (ID3D11Resource*)_ptr;
+			if (readable) {
+				s_renderD3D11->m_device->CreateShaderResourceView(m_ptr, &srvDesc, &m_srv);
+			}
 		}
 	}
 
