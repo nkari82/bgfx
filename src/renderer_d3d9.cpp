@@ -1179,7 +1179,7 @@ namespace bgfx { namespace d3d9
 			m_frameBuffers[_handle.idx].create(_num, _attachment);
 		}
 
-		void createFrameBuffer(FrameBufferHandle _handle, void* _nwh, void* /*_ndit*/, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat, uint32_t /*_reset*/) override
+		void createFrameBuffer(FrameBufferHandle _handle, void* _nwh, void* /*_ndt*/, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat, uint32_t /*_reset*/) override
 		{
 			uint16_t denseIdx = m_numWindows++;
 			m_windows[denseIdx] = _handle;
