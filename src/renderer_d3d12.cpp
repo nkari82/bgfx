@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2020 Branimir Karadzic. All rights reserved.
+ * Copyright 2011-2021 Branimir Karadzic. All rights reserved.
  * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
  */
 
@@ -955,7 +955,7 @@ namespace bgfx { namespace d3d12
 				m_scd.alphaMode  = DXGI_ALPHA_MODE_IGNORE;
 				m_scd.flags      = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
-				m_scd.maxFrameLatency = bx::min<uint8_t>(_init.resolution.maxFrameLatency, 3);
+				m_scd.maxFrameLatency = bx::min<uint8_t>(_init.resolution.maxFrameLatency, BGFX_CONFIG_MAX_FRAME_LATENCY);
 				m_scd.nwh             = g_platformData.nwh;
 				m_scd.ndt             = g_platformData.ndt;
 				m_scd.windowed        = true;
@@ -1020,6 +1020,7 @@ namespace bgfx { namespace d3d12
 				m_resolution.width  = _init.resolution.width;
 				m_resolution.height = _init.resolution.height;
 
+				m_windows[0] = BGFX_INVALID_HANDLE;
 				m_numWindows = 1;
 
 #if BX_PLATFORM_WINDOWS
@@ -1162,6 +1163,7 @@ namespace bgfx { namespace d3d12
 					| BGFX_CAPS_TEXTURE_2D_ARRAY
 					| BGFX_CAPS_TEXTURE_CUBE_ARRAY
 					| BGFX_CAPS_IMAGE_RW
+					| BGFX_CAPS_VIEWPORT_LAYER_ARRAY
 					);
 				g_caps.limits.maxTextureSize     = D3D12_REQ_TEXTURE2D_U_OR_V_DIMENSION;
 				g_caps.limits.maxTextureLayers   = D3D12_REQ_TEXTURE2D_ARRAY_AXIS_DIMENSION;
@@ -2858,6 +2860,7 @@ namespace bgfx { namespace d3d12
 				| BGFX_STATE_BLEND_INDEPENDENT
 				| BGFX_STATE_BLEND_ALPHA_TO_COVERAGE
 				| BGFX_STATE_CULL_MASK
+				| BGFX_STATE_FRONT_CCW
 				| BGFX_STATE_MSAA
 				| BGFX_STATE_LINEAA
 				| BGFX_STATE_CONSERVATIVE_RASTER
@@ -4076,8 +4079,12 @@ namespace bgfx { namespace d3d12
 				BufferD3D12& ib = s_renderD3D12->m_indexBuffers[_draw.m_indexBuffer.idx];
 				ib.setState(_commandList, D3D12_RESOURCE_STATE_GENERIC_READ);
 
-				const bool hasIndex16 = 0 == (ib.m_flags & BGFX_BUFFER_INDEX32);
-				const uint32_t indexSize = hasIndex16 ? 2 : 4;
+				const bool isIndex16          = _draw.isIndex16();
+				const uint32_t indexSize      = isIndex16 ? 2 : 4;
+				const DXGI_FORMAT indexFormat = isIndex16
+					? DXGI_FORMAT_R16_UINT
+					: DXGI_FORMAT_R32_UINT
+					;
 
 				numIndices = UINT32_MAX == _draw.m_numIndices
 					? ib.m_size / indexSize
@@ -4087,10 +4094,7 @@ namespace bgfx { namespace d3d12
 				D3D12_INDEX_BUFFER_VIEW ibv;
 				ibv.BufferLocation = ib.m_gpuVA;
 				ibv.SizeInBytes    = ib.m_size;
-				ibv.Format = hasIndex16
-					? DXGI_FORMAT_R16_UINT
-					: DXGI_FORMAT_R32_UINT
-					;
+				ibv.Format         = indexFormat;
 				_commandList->IASetIndexBuffer(&ibv);
 
 				_commandList->ExecuteIndirect(
@@ -4155,8 +4159,9 @@ namespace bgfx { namespace d3d12
 			BufferD3D12& ib = s_renderD3D12->m_indexBuffers[_draw.m_indexBuffer.idx];
 			ib.setState(_commandList, D3D12_RESOURCE_STATE_GENERIC_READ);
 
-			const bool hasIndex16 = 0 == (ib.m_flags & BGFX_BUFFER_INDEX32);
-			const uint32_t indexSize = hasIndex16 ? 2 : 4;
+			const bool isIndex16          = _draw.isIndex16();
+			const uint32_t indexSize      = isIndex16 ? 2 : 4;
+			const DXGI_FORMAT indexFormat = isIndex16 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
 
 			numIndices = UINT32_MAX == _draw.m_numIndices
 				? ib.m_size / indexSize
@@ -4167,10 +4172,7 @@ namespace bgfx { namespace d3d12
 			cmd.cbv = _cbv;
 			cmd.ibv.BufferLocation = ib.m_gpuVA;
 			cmd.ibv.SizeInBytes    = ib.m_size;
-			cmd.ibv.Format = hasIndex16
-				? DXGI_FORMAT_R16_UINT
-				: DXGI_FORMAT_R32_UINT
-				;
+			cmd.ibv.Format         = indexFormat;
 
 			uint32_t numVertices;
 			uint8_t  numStreams = fill(_commandList, cmd.vbv, _draw, numVertices);
@@ -4560,6 +4562,12 @@ namespace bgfx { namespace d3d12
 					bx::read(&reader, texInfo);
 				}
 
+				if (!isShaderVerLess(magic, 10) )
+				{
+					uint16_t texFormat = 0;
+					bx::read(&reader, texFormat);
+				}
+
 				const char* kind = "invalid";
 
 				PredefinedUniform::Enum predefined = nameToPredefinedUniformEnum(name);
@@ -4884,27 +4892,37 @@ namespace bgfx { namespace d3d12
 
 				if (1 < ti.numLayers)
 				{
-					m_srvd.ViewDimension = 1 < msaa.Count
-						? D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY
-						: D3D12_SRV_DIMENSION_TEXTURE2DARRAY
-						;
-					m_srvd.Texture2DArray.MostDetailedMip     = 0;
-					m_srvd.Texture2DArray.MipLevels           = ti.numMips;
-					m_srvd.Texture2DArray.FirstArraySlice     = 0;
-					m_srvd.Texture2DArray.ArraySize           = ti.numLayers;
-					m_srvd.Texture2DArray.PlaneSlice          = 0;
-					m_srvd.Texture2DArray.ResourceMinLODClamp = 0.0f;
+					if (1 < msaa.Count && !needResolve)
+					{
+						m_srvd.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY;
+						m_srvd.Texture2DMSArray.FirstArraySlice = 0;
+						m_srvd.Texture2DMSArray.ArraySize       = ti.numLayers;
+					}
+					else
+					{
+						m_srvd.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+						m_srvd.Texture2DArray.MostDetailedMip     = 0;
+						m_srvd.Texture2DArray.MipLevels           = ti.numMips;
+						m_srvd.Texture2DArray.FirstArraySlice     = 0;
+						m_srvd.Texture2DArray.ArraySize           = ti.numLayers;
+						m_srvd.Texture2DArray.PlaneSlice          = 0;
+						m_srvd.Texture2DArray.ResourceMinLODClamp = 0.0f;
+					}
 				}
 				else
 				{
-					m_srvd.ViewDimension = 1 < msaa.Count
-						? D3D12_SRV_DIMENSION_TEXTURE2DMS
-						: D3D12_SRV_DIMENSION_TEXTURE2D
-						;
-					m_srvd.Texture2D.MostDetailedMip     = 0;
-					m_srvd.Texture2D.MipLevels           = ti.numMips;
-					m_srvd.Texture2D.PlaneSlice          = 0;
-					m_srvd.Texture2D.ResourceMinLODClamp = 0.0f;
+					if (1 < msaa.Count && !needResolve)
+					{
+						m_srvd.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
+					}
+					else
+					{
+						m_srvd.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+						m_srvd.Texture2D.MostDetailedMip     = 0;
+						m_srvd.Texture2D.MipLevels           = ti.numMips;
+						m_srvd.Texture2D.PlaneSlice          = 0;
+						m_srvd.Texture2D.ResourceMinLODClamp = 0.0f;
+					}
 				}
 
 				if (1 < ti.numLayers)
@@ -5153,7 +5171,7 @@ namespace bgfx { namespace d3d12
 		s_renderD3D12->m_cmd.release(staging);
 	}
 
-	void TextureD3D12::resolve(ID3D12GraphicsCommandList* _commandList, uint8_t _resolve)
+	void TextureD3D12::resolve(ID3D12GraphicsCommandList* _commandList, uint8_t _resolve, uint32_t _layer, uint32_t _numLayers, uint32_t _mip)
 	{
 		BX_UNUSED(_resolve);
 
@@ -5168,12 +5186,17 @@ namespace bgfx { namespace d3d12
 				, D3D12_RESOURCE_STATE_RESOLVE_DEST
 			);
 
-			_commandList->ResolveSubresource(m_singleMsaa
-				, 0
-				, m_ptr
-				, 0
-				, s_textureFormat[m_textureFormat].m_fmt
-			);
+			for (uint32_t ii = _layer; ii < _numLayers; ++ii)
+			{
+				const UINT resource = _mip + (ii * m_numMips);
+
+				_commandList->ResolveSubresource(m_singleMsaa
+					, resource
+					, m_ptr
+					, resource
+					, s_textureFormat[m_textureFormat].m_fmt
+				);
+			}
 
 			setResourceBarrier(_commandList
 				, m_singleMsaa
@@ -5356,7 +5379,7 @@ namespace bgfx { namespace d3d12
 								{
 									dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY;
 									dsvDesc.Texture2DMSArray.FirstArraySlice = at.layer;
-									dsvDesc.Texture2DMSArray.ArraySize       = 1;
+									dsvDesc.Texture2DMSArray.ArraySize       = at.numLayers;
 								}
 								else
 								{
@@ -5369,7 +5392,7 @@ namespace bgfx { namespace d3d12
 								{
 									dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
 									dsvDesc.Texture2DArray.FirstArraySlice = at.layer;
-									dsvDesc.Texture2DArray.ArraySize       = 1;
+									dsvDesc.Texture2DArray.ArraySize       = at.numLayers;
 									dsvDesc.Texture2DArray.MipSlice        = at.mip;
 								}
 								else
@@ -5384,14 +5407,14 @@ namespace bgfx { namespace d3d12
 							if (1 < msaa.Count)
 							{
 								dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY;
-								dsvDesc.Texture2DMSArray.ArraySize       = 1;
 								dsvDesc.Texture2DMSArray.FirstArraySlice = at.layer;
+								dsvDesc.Texture2DMSArray.ArraySize       = at.numLayers;
 							}
 							else
 							{
 								dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
-								dsvDesc.Texture2DArray.ArraySize       = 1;
 								dsvDesc.Texture2DArray.FirstArraySlice = at.layer;
+								dsvDesc.Texture2DArray.ArraySize       = at.numLayers;
 								dsvDesc.Texture2DArray.MipSlice        = at.mip;
 							}
 							break;
@@ -5420,7 +5443,7 @@ namespace bgfx { namespace d3d12
 								{
 									desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY;
 									desc.Texture2DMSArray.FirstArraySlice = at.layer;
-									desc.Texture2DMSArray.ArraySize       = 1;
+									desc.Texture2DMSArray.ArraySize       = at.numLayers;
 								}
 								else
 								{
@@ -5433,7 +5456,7 @@ namespace bgfx { namespace d3d12
 								{
 									desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
 									desc.Texture2DArray.FirstArraySlice = at.layer;
-									desc.Texture2DArray.ArraySize       = 1;
+									desc.Texture2DArray.ArraySize       = at.numLayers;
 									desc.Texture2DArray.MipSlice        = at.mip;
 									desc.Texture2DArray.PlaneSlice      = 0;
 								}
@@ -5450,14 +5473,14 @@ namespace bgfx { namespace d3d12
 							if (1 < msaa.Count)
 							{
 								desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY;
-								desc.Texture2DMSArray.ArraySize       = 1;
 								desc.Texture2DMSArray.FirstArraySlice = at.layer;
+								desc.Texture2DMSArray.ArraySize       = at.numLayers;
 							}
 							else
 							{
 								desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
-								desc.Texture2DArray.ArraySize       = 1;
 								desc.Texture2DArray.FirstArraySlice = at.layer;
+								desc.Texture2DArray.ArraySize       = at.numLayers;
 								desc.Texture2DArray.MipSlice        = at.mip;
 								desc.Texture2DArray.PlaneSlice      = 0;
 							}
@@ -5465,9 +5488,9 @@ namespace bgfx { namespace d3d12
 
 						case TextureD3D12::Texture3D:
 							desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE3D;
-							desc.Texture3D.MipSlice = at.mip;
-							desc.Texture3D.WSize = 1;
+							desc.Texture3D.MipSlice    = at.mip;
 							desc.Texture3D.FirstWSlice = at.layer;
+							desc.Texture3D.WSize       = at.numLayers;
 							break;
 						}
 
@@ -5498,7 +5521,7 @@ namespace bgfx { namespace d3d12
 				if (isValid(at.handle) )
 				{
 					TextureD3D12& texture = s_renderD3D12->m_textures[at.handle.idx];
-					texture.resolve(s_renderD3D12->m_commandList, at.resolve);
+					texture.resolve(s_renderD3D12->m_commandList, at.resolve, at.layer, at.numLayers, at.mip);
 				}
 			}
 		}

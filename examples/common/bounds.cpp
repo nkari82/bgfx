@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2020 Branimir Karadzic. All rights reserved.
+ * Copyright 2011-2021 Branimir Karadzic. All rights reserved.
  * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
  */
 
@@ -1822,7 +1822,7 @@ bool overlap(const Plane& _plane, const Cone& _cone)
 
 	const float bb = len;
 	const float aa = _cone.radius;
-	const float cc = sqrt(square(aa) + square(bb) );
+	const float cc = bx::sqrt(square(aa) + square(bb) );
 
 	const Vec3 pos = add(add(_cone.end
 		, mul(dir, len * bb/cc) )

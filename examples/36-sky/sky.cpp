@@ -1,52 +1,52 @@
-﻿/*
+/*
  * Copyright 2017 Stanislav Pidhorskyi. All rights reserved.
  * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
  */
 
- /*
-  * This example demonstrates:
-  * - Usage of Perez sky model [1] to render a dynamic sky.
-  * - Rendering a mesh with a lightmap, shading of which is driven by the same parameters as the sky.
-  *
-  * Typically, the sky is rendered using cubemaps or other environment maps.
-  * This approach can provide a high-quality sky, but the downside is that the
-  * image is static. To achieve daytime changes in sky appearance, there is a need
-  * in a dynamic model.
-  *
-  * Perez "An All-Weather Model for Sky Luminance Distribution" is a simple,
-  * but good enough model which is, in essence, a function that
-  * interpolates a sky color. As input, it requires several turbidity
-  * coefficients, a color at zenith and direction to the sun.
-  * Turbidity coefficients are taken from [2], which are computed using more
-  * complex physically based models. Color at zenith depends on daytime and can
-  * vary depending on many factors.
-  *
-  * In the code below, there are two tables that contain sky and sun luminance
-  * which were computed using code from [3]. Luminance in those tables
-  * represents actual scale of light energy that comes from sun compared to
-  * the sky.
-  *
-  * The sky is driven by luminance of the sky, while the material of the
-  * landscape is driven by both, the luminance of the sky and the sun. The
-  * lightening model is very simple and consists of two parts: directional
-  * light and hemisphere light. The first is used for the sun while the second
-  * is used for the sky. Additionally, the second part is modulated by a
-  * lightmap to achieve ambient occlusion effect.
-  *
-  * References
-  * ==========
-  *
-  * [1] R. Perez, R. Seals, and J. Michalsky."An All-Weather Model for Sky Luminance Distribution".
-  *     Solar Energy, Volume 50, Number 3 (March 1993), pp. 235–245.
-  *
-  * [2] A. J. Preetham, Peter Shirley, and Brian Smits. "A Practical Analytic Model for Daylight",
-  *     Proceedings of the 26th Annual Conference on Computer Graphics and Interactive Techniques,
-  *     1999, pp. 91–100.
-  *     https://www.cs.utah.edu/~shirley/papers/sunsky/sunsky.pdf
-  *
-  * [3] E. Lengyel, Game Engine Gems, Volume One. Jones & Bartlett Learning, 2010. pp. 219 - 234
-  *
-  */
+/*
+ * This example demonstrates:
+ * - Usage of Perez sky model [1] to render a dynamic sky.
+ * - Rendering a mesh with a lightmap, shading of which is driven by the same parameters as the sky.
+ *
+ * Typically, the sky is rendered using cubemaps or other environment maps.
+ * This approach can provide a high-quality sky, but the downside is that the
+ * image is static. To achieve daytime changes in sky appearance, there is a need
+ * in a dynamic model.
+ *
+ * Perez "An All-Weather Model for Sky Luminance Distribution" is a simple,
+ * but good enough model which is, in essence, a function that
+ * interpolates a sky color. As input, it requires several turbidity
+ * coefficients, a color at zenith and direction to the sun.
+ * Turbidity coefficients are taken from [2], which are computed using more
+ * complex physically based models. Color at zenith depends on daytime and can
+ * vary depending on many factors.
+ *
+ * In the code below, there are two tables that contain sky and sun luminance
+ * which were computed using code from [3]. Luminance in those tables
+ * represents actual scale of light energy that comes from sun compared to
+ * the sky.
+ *
+ * The sky is driven by luminance of the sky, while the material of the
+ * landscape is driven by both, the luminance of the sky and the sun. The
+ * lightening model is very simple and consists of two parts: directional
+ * light and hemisphere light. The first is used for the sun while the second
+ * is used for the sky. Additionally, the second part is modulated by a
+ * lightmap to achieve ambient occlusion effect.
+ *
+ * References
+ * ==========
+ *
+ * [1] R. Perez, R. Seals, and J. Michalsky."An All-Weather Model for Sky Luminance Distribution".
+ *     Solar Energy, Volume 50, Number 3 (March 1993), pp. 235-245.
+ *
+ * [2] A. J. Preetham, Peter Shirley, and Brian Smits. "A Practical Analytic Model for Daylight",
+ *     Proceedings of the 26th Annual Conference on Computer Graphics and Interactive Techniques,
+ *     1999, pp. 91-100.
+ *     https://www.cs.utah.edu/~shirley/papers/sunsky/sunsky.pdf
+ *
+ * [3] E. Lengyel, Game Engine Gems, Volume One. Jones & Bartlett Learning, 2010. pp. 219 - 234
+ *
+ */
 
 #include "common.h"
 #include "bgfx_utils.h"
@@ -134,7 +134,7 @@ namespace
 
 
 	// Turbidity tables. Taken from:
-	// A. J. Preetham, P. Shirley, and B. Smits. A Practical Analytic Model for Daylight. SIGGRAPH ’99
+	// A. J. Preetham, P. Shirley, and B. Smits. A Practical Analytic Model for Daylight. SIGGRAPH '99
 	// Coefficients correspond to xyY colorspace.
 	static Color ABCDE[] =
 	{
@@ -243,12 +243,12 @@ namespace
 		SunController()
 			: m_latitude(50.0f)
 			, m_month(June)
-			, m_eclipticObliquity(bx::toRad(23.4f))
+			, m_eclipticObliquity(bx::toRad(23.4f) )
 			, m_delta(0.0f)
 		{
 			m_northDir = { 1.0f,  0.0f, 0.0f };
-			m_sunDir = { 0.0f, -1.0f, 0.0f };
-			m_upDir = { 0.0f,  1.0f, 0.0f };
+			m_sunDir   = { 0.0f, -1.0f, 0.0f };
+			m_upDir    = { 0.0f,  1.0f, 0.0f };
 		}
 
 		void Update(float _time)
@@ -268,8 +268,8 @@ namespace
 		{
 			float day = 30.0f * m_month + 15.0f;
 			float lambda = 280.46f + 0.9856474f * day;
-			lambda = bx::toRad(lambda);
-			m_delta = bx::asin(bx::sin(m_eclipticObliquity) * bx::sin(lambda));
+			lambda  = bx::toRad(lambda);
+			m_delta = bx::asin(bx::sin(m_eclipticObliquity) * bx::sin(lambda) );
 		}
 
 		void UpdateSunPosition(float _hour)
@@ -277,13 +277,13 @@ namespace
 			const float latitude = bx::toRad(m_latitude);
 			const float hh = _hour * bx::kPi / 12.0f;
 			const float azimuth = bx::atan2(
-				bx::sin(hh)
+				  bx::sin(hh)
 				, bx::cos(hh) * bx::sin(latitude) - bx::tan(m_delta) * bx::cos(latitude)
-			);
+				);
 
 			const float altitude = bx::asin(
 				bx::sin(latitude) * bx::sin(m_delta) + bx::cos(latitude) * bx::cos(m_delta) * bx::cos(hh)
-			);
+				);
 
 			const bx::Quaternion rot0 = bx::rotateAxis(m_upDir, -azimuth);
 			const bx::Vec3 dir = bx::mul(m_northDir, rot0);
@@ -334,7 +334,7 @@ namespace
 
 			ScreenPosVertex* vertices = (ScreenPosVertex*)BX_ALLOC(allocator
 				, verticalCount * horizontalCount * sizeof(ScreenPosVertex)
-			);
+				);
 
 			for (int i = 0; i < verticalCount; i++)
 			{
@@ -348,7 +348,7 @@ namespace
 
 			uint16_t* indices = (uint16_t*)BX_ALLOC(allocator
 				, (verticalCount - 1) * (horizontalCount - 1) * 6 * sizeof(uint16_t)
-			);
+				);
 
 			int k = 0;
 			for (int i = 0; i < verticalCount - 1; i++)
@@ -415,11 +415,11 @@ namespace
 			m_reset = BGFX_RESET_VSYNC;
 
 			bgfx::Init init;
-			init.type = args.m_type;
+			init.type     = args.m_type;
 			init.vendorId = args.m_pciId;
-			init.resolution.width = m_width;
+			init.resolution.width  = m_width;
 			init.resolution.height = m_height;
-			init.resolution.reset = m_reset;
+			init.resolution.reset  = m_reset;
 			bgfx::init(init);
 
 			// Enable m_debug text.
@@ -431,7 +431,7 @@ namespace
 				, 0x000000ff
 				, 1.0f
 				, 0
-			);
+				);
 
 			m_sunLuminanceXYZ.SetMap(sunLuminanceXYZTable);
 			m_skyLuminanceXYZ.SetMap(skyLuminanceXYZTable);
@@ -447,13 +447,13 @@ namespace
 			m_time = 0.0f;
 			m_timeScale = 1.0f;
 
-			s_texLightmap = bgfx::createUniform("s_texLightmap", bgfx::UniformType::Sampler);
-			u_sunLuminance = bgfx::createUniform("u_sunLuminance", bgfx::UniformType::Vec4);
+			s_texLightmap     = bgfx::createUniform("s_texLightmap",     bgfx::UniformType::Sampler);
+			u_sunLuminance    = bgfx::createUniform("u_sunLuminance",    bgfx::UniformType::Vec4);
 			u_skyLuminanceXYZ = bgfx::createUniform("u_skyLuminanceXYZ", bgfx::UniformType::Vec4);
-			u_skyLuminance = bgfx::createUniform("u_skyLuminance", bgfx::UniformType::Vec4);
-			u_sunDirection = bgfx::createUniform("u_sunDirection", bgfx::UniformType::Vec4);
-			u_parameters = bgfx::createUniform("u_parameters", bgfx::UniformType::Vec4);
-			u_perezCoeff = bgfx::createUniform("u_perezCoeff", bgfx::UniformType::Vec4, 5);
+			u_skyLuminance    = bgfx::createUniform("u_skyLuminance",    bgfx::UniformType::Vec4);
+			u_sunDirection    = bgfx::createUniform("u_sunDirection",    bgfx::UniformType::Vec4);
+			u_parameters      = bgfx::createUniform("u_parameters",      bgfx::UniformType::Vec4);
+			u_perezCoeff      = bgfx::createUniform("u_perezCoeff",      bgfx::UniformType::Vec4, 5);
 
 			m_landscapeProgram = loadProgram("vs_sky_landscape", "fs_sky_landscape");
 
@@ -502,7 +502,7 @@ namespace
 		void imgui(float _width)
 		{
 			ImGui::Begin("ProceduralSky");
-			ImGui::SetWindowSize(ImVec2(_width, 200.0f));
+			ImGui::SetWindowSize(ImVec2(_width, 200.0f) );
 			ImGui::SliderFloat("Time scale", &m_timeScale, 0.0f, 1.0f);
 			ImGui::SliderFloat("Time", &m_time, 0.0f, 24.0f);
 			ImGui::SliderFloat("Latitude", &m_sun.m_latitude, -90.0f, 90.0f);
@@ -546,30 +546,27 @@ namespace
 
 				imguiBeginFrame(m_mouseState.m_mx
 					, m_mouseState.m_my
-					, (m_mouseState.m_buttons[entry::MouseButton::Left] ? IMGUI_MBUT_LEFT : 0)
-					| (m_mouseState.m_buttons[entry::MouseButton::Right] ? IMGUI_MBUT_RIGHT : 0)
+					, (m_mouseState.m_buttons[entry::MouseButton::Left]   ? IMGUI_MBUT_LEFT   : 0)
+					| (m_mouseState.m_buttons[entry::MouseButton::Right]  ? IMGUI_MBUT_RIGHT  : 0)
 					| (m_mouseState.m_buttons[entry::MouseButton::Middle] ? IMGUI_MBUT_MIDDLE : 0)
 					, m_mouseState.m_mz
 					, uint16_t(m_width)
 					, uint16_t(m_height)
-				);
+					);
 
 				showExampleDialog(this);
 
 				ImGui::SetNextWindowPos(
-					ImVec2(m_width - m_width / 5.0f - 10.0f, 10.0f)
+					  ImVec2(m_width - m_width / 5.0f - 10.0f, 10.0f)
 					, ImGuiCond_FirstUseEver
-				);
+					);
 
 				imgui(m_width / 5.0f - 10.0f);
 
 				imguiEndFrame();
 
-				if (!ImGui::MouseOverArea())
-				{
-					// Update camera.
-					cameraUpdate(deltaTime, m_mouseState);
-				}
+				// Update camera.
+				cameraUpdate(deltaTime, m_mouseState, ImGui::MouseOverArea() );
 
 				// Set view 0 default viewport.
 				bgfx::setViewRect(0, 0, 0, uint16_t(m_width), uint16_t(m_height));
@@ -588,9 +585,9 @@ namespace
 				Color skyLuminanceXYZ = m_skyLuminanceXYZ.GetValue(m_time);
 				Color skyLuminanceRGB = xyzToRgb(skyLuminanceXYZ);
 
-				bgfx::setUniform(u_sunLuminance, &sunLuminanceRGB.x);
+				bgfx::setUniform(u_sunLuminance,    &sunLuminanceRGB.x);
 				bgfx::setUniform(u_skyLuminanceXYZ, &skyLuminanceXYZ.x);
-				bgfx::setUniform(u_skyLuminance, &skyLuminanceRGB.x);
+				bgfx::setUniform(u_skyLuminance,    &skyLuminanceRGB.x);
 
 				bgfx::setUniform(u_sunDirection, &m_sun.m_sunDir.x);
 
@@ -662,8 +659,8 @@ namespace
 } // namespace
 
 ENTRY_IMPLEMENT_MAIN(
-	ExampleProceduralSky
+	  ExampleProceduralSky
 	, "36-sky"
 	, "Perez dynamic sky model."
 	, "https://bkaradzic.github.io/bgfx/examples.html#sky"
-);
+	);
