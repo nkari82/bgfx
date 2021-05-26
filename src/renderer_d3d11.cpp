@@ -2551,19 +2551,27 @@ namespace bgfx { namespace d3d11
 
 			if (!isValid(_fbh) )
 			{
-				m_currentColor        = m_backBufferColor;
-				m_currentDepthStencil = m_backBufferDepthStencil;
+				if (NULL != m_backBufferColor)
+				{
+					m_currentColor = m_backBufferColor;
+					m_currentDepthStencil = m_backBufferDepthStencil;
 
-				m_deviceCtx->OMSetRenderTargetsAndUnorderedAccessViews(
-					  1
-					, &m_currentColor
-					, m_currentDepthStencil
-					, 1
-					, 0
-					, NULL
-					, NULL
+					m_deviceCtx->OMSetRenderTargetsAndUnorderedAccessViews(
+						1
+						, &m_currentColor
+						, m_currentDepthStencil
+						, 1
+						, 0
+						, NULL
+						, NULL
 					);
-				m_needPresent |= _needPresent;
+					m_needPresent |= _needPresent;
+				}
+				else
+				{
+					m_currentColor = NULL;
+					m_currentDepthStencil = NULL;
+				}
 			}
 			else
 			{
