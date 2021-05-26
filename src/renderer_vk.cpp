@@ -2209,7 +2209,7 @@ VK_IMPORT_DEVICE
 			m_program[_handle.idx].destroy();
 		}
 
-		void* createTexture(TextureHandle _handle, const Memory* _mem, uint64_t _flags, uint8_t _skip) override
+		void* createTexture(TextureHandle _handle, const Memory* _mem, uint64_t _flags, uint8_t _skip, const CreateFn* /*_cb*/) override
 		{
 			return m_textures[_handle.idx].create(m_commandBuffer, _mem, _flags, _skip);
 		}
@@ -2281,7 +2281,7 @@ VK_IMPORT_DEVICE
 			bx::write(&writer, tc);
 
 			destroyTexture(_handle);
-			createTexture(_handle, mem, flags, 0);
+			createTexture(_handle, mem, flags, 0, NULL);
 
 			bgfx::release(mem);
 		}
@@ -2306,7 +2306,7 @@ VK_IMPORT_DEVICE
 			m_frameBuffers[_handle.idx].create(_num, _attachment);
 		}
 
-		void createFrameBuffer(FrameBufferHandle _handle, void* _nwh, void* /*_ndt*/, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat, uint32_t /*_reset*/) override
+		void createFrameBuffer(FrameBufferHandle _handle, void* _nwh, void* /*_ndt*/, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat, uint32_t /*_reset*/, const CreateFn* /*_cb*/) override
 		{
 			for (uint32_t ii = 0, num = m_numWindows; ii < num; ++ii)
 			{

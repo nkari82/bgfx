@@ -2729,6 +2729,7 @@ namespace bgfx
 		, TextureFormat::Enum _format
 		, uint64_t _flags = BGFX_TEXTURE_NONE|BGFX_SAMPLER_NONE
 		, const Memory* _mem = NULL
+		, CreateFn&& _createFn = NULL
 		);
 
 	/// Create texture with size based on backbuffer ratio. Texture will maintain ratio

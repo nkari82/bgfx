@@ -3282,7 +3282,7 @@ namespace bgfx { namespace gl
 			m_program[_handle.idx].destroy();
 		}
 
-		void* createTexture(TextureHandle _handle, const Memory* _mem, uint64_t _flags, uint8_t _skip) override
+		void* createTexture(TextureHandle _handle, const Memory* _mem, uint64_t _flags, uint8_t _skip, const CreateFn* /*_cb*/) override
 		{
 			m_textures[_handle.idx].create(_mem, _flags, _skip);
 			return NULL;
@@ -3422,7 +3422,7 @@ namespace bgfx { namespace gl
 			m_frameBuffers[_handle.idx].create(_num, _attachment);
 		}
 
-		void createFrameBuffer(FrameBufferHandle _handle, void* _nwh, void* /*_ndt*/, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat, uint32_t /*_reset*/) override
+		void createFrameBuffer(FrameBufferHandle _handle, void* _nwh, void* /*_ndt*/, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat, uint32_t /*_reset*/, const CreateFn* /*_cb*/) override
 		{
 			uint16_t denseIdx = m_numWindows++;
 			m_windows[denseIdx] = _handle;

@@ -290,7 +290,7 @@ namespace bgfx { namespace d3d11
 		{
 		}
 
-		void* create(const Memory* _mem, uint64_t _flags, uint8_t _skip);
+		void* create(const Memory* _mem, uint64_t _flags, uint8_t _skip, const CreateFn* cb);
 		void destroy();
 		void overrideInternal(uintptr_t _ptr);
 		void update(uint8_t _side, uint8_t _mip, const Rect& _rect, uint16_t _z, uint16_t _depth, uint16_t _pitch, const Memory* _mem);
@@ -350,7 +350,7 @@ namespace bgfx { namespace d3d11
 		}
 
 		void create(uint8_t _num, const Attachment* _attachment);
-		void create(uint16_t _denseIdx, void* _nwh, void* _ndt, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat, uint32_t _reset);
+		void create(uint16_t _denseIdx, void* _nwh, void* _ndt, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat, uint32_t _reset, const CreateFn* _cb);
 		void resize(void* _nwh, void* _ndt, uint32_t _width, uint32_t _height);
 		uint16_t destroy();
 		void preReset(bool _force = false);

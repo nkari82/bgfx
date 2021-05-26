@@ -1789,9 +1789,9 @@ namespace bgfx { namespace d3d11
 			m_program[_handle.idx].destroy();
 		}
 
-		void* createTexture(TextureHandle _handle, const Memory* _mem, uint64_t _flags, uint8_t _skip) override
+		void* createTexture(TextureHandle _handle, const Memory* _mem, uint64_t _flags, uint8_t _skip, const CreateFn* _cb) override
 		{
-			return m_textures[_handle.idx].create(_mem, _flags, _skip);
+			return m_textures[_handle.idx].create(_mem, _flags, _skip, _cb);
 		}
 
 		void updateTextureBegin(TextureHandle /*_handle*/, uint8_t /*_side*/, uint8_t /*_mip*/) override
@@ -1858,7 +1858,7 @@ namespace bgfx { namespace d3d11
 			bx::write(&writer, tc);
 
 			texture.destroy();
-			texture.create(mem, texture.m_flags, 0);
+			texture.create(mem, texture.m_flags, 0, NULL);
 
 			release(mem);
 		}
@@ -1889,7 +1889,7 @@ namespace bgfx { namespace d3d11
 			m_frameBuffers[_handle.idx].create(_num, _attachment);
 		}
 
-		void createFrameBuffer(FrameBufferHandle _handle, void* _nwh, void* _ndt, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat, uint32_t _reset) override
+		void createFrameBuffer(FrameBufferHandle _handle, void* _nwh, void* _ndt, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat, uint32_t _reset, const CreateFn* _cb) override
 		{
 			setGraphicsDebuggerPresent(_ndt ? true : false);
 
@@ -1906,7 +1906,7 @@ namespace bgfx { namespace d3d11
 
 			uint16_t denseIdx = m_numWindows++;
 			m_windows[denseIdx] = _handle;
-			m_frameBuffers[_handle.idx].create(denseIdx, _nwh, _ndt, _width, _height, _format, _depthFormat, _reset);
+			m_frameBuffers[_handle.idx].create(denseIdx, _nwh, _ndt, _width, _height, _format, _depthFormat, _reset, _cb);
 		}
 
 		void resizeFrameBuffer(FrameBufferHandle _handle, void* _nwh, void* _ndt, uint32_t _width, uint32_t _height)
@@ -4325,7 +4325,7 @@ namespace bgfx { namespace d3d11
 		}
 	}
 
-	void* TextureD3D11::create(const Memory* _mem, uint64_t _flags, uint8_t _skip)
+	void* TextureD3D11::create(const Memory* _mem, uint64_t _flags, uint8_t _skip, const CreateFn* cb)
 	{
 		void* directAccessPtr = NULL;
 
@@ -4661,6 +4661,11 @@ namespace bgfx { namespace d3d11
 			}
 		}
 
+		if (NULL != cb)
+		{
+			(*cb)(reinterpret_cast<void*>(m_srv));
+		}
+
 		return directAccessPtr;
 	}
 
@@ -4868,7 +4873,7 @@ namespace bgfx { namespace d3d11
 		postReset();
 	}
 
-	void FrameBufferD3D11::create(uint16_t _denseIdx, void* _nwh, void* _ndt, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat, uint32_t _reset)
+	void FrameBufferD3D11::create(uint16_t _denseIdx, void* _nwh, void* _ndt, uint32_t _width, uint32_t _height, TextureFormat::Enum _format, TextureFormat::Enum _depthFormat, uint32_t _reset, const CreateFn* _cb)
 	{
 		SwapChainDesc scd;
 		bx::memCopy(&scd, &s_renderD3D11->m_scd, sizeof(SwapChainDesc) );
@@ -4947,6 +4952,11 @@ namespace bgfx { namespace d3d11
 		m_format = _format;
 		m_depthFormat = _depthFormat;
 		m_reset = _reset;
+
+		if (NULL != _cb)
+		{
+			(*_cb)(reinterpret_cast<void*>(m_rtv[0]));
+		}
 	}
 
 	void FrameBufferD3D11::resize(void* _nwh, void* _ndt, uint32_t _width, uint32_t _height)
