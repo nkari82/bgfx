@@ -4390,8 +4390,7 @@ namespace bgfx
 
 			if (NULL != _createFn)
 			{
-				CreateFn* cb = (CreateFn*)BX_ALLOC(g_allocator, sizeof(CreateFn));
-				::new(cb)CreateFn(std::move(_createFn));
+				CreateFn* cb = BX_NEW(g_allocator, CreateFn)(std::move(_createFn));
 				cmdbuf.write(cb);
 			}
 
@@ -4643,8 +4642,7 @@ namespace bgfx
 
 				if (NULL != _createFn)
 				{
-					CreateFn* cb = (CreateFn*)BX_ALLOC(g_allocator, sizeof(CreateFn));
-					::new(cb)CreateFn(std::move(_createFn));
+					CreateFn* cb = BX_NEW(g_allocator, CreateFn)(std::move(_createFn));
 					cmdbuf.write(cb);
 				}
 
@@ -4716,8 +4714,7 @@ namespace bgfx
 
 			if (NULL != _destroyFn)
 			{
-				DestroyFn* cb = (DestroyFn*)BX_ALLOC(g_allocator, sizeof(DestroyFn));
-				::new(cb)DestroyFn(std::move(_destroyFn));
+				DestroyFn* cb = BX_NEW(g_allocator, DestroyFn)(std::move(_destroyFn));
 				cmdbuf.write(cb);
 			}
 

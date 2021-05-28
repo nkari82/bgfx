@@ -3109,8 +3109,7 @@ namespace bgfx
 
 					if (NULL != cb)
 					{
-						cb->~CreateFn();
-						BX_FREE(g_allocator, cb);
+						BX_DELETE(g_allocator, cb);
 					}
 
 					bx::MemoryReader reader(mem->data, mem->size);
@@ -3265,8 +3264,7 @@ namespace bgfx
 
 						if (NULL != cb)
 						{
-							cb->~CreateFn();
-							BX_FREE(g_allocator, cb);	
+							BX_DELETE(g_allocator, cb);
 						}
 					}
 					else
@@ -3299,8 +3297,7 @@ namespace bgfx
 						DestroyFn* cb;
 						_cmdbuf.read(cb);
 						(*cb)();
-						cb->~DestroyFn();
-						BX_FREE(g_allocator, cb);
+						BX_DELETE(g_allocator, cb);
 					}
 				}
 				break;
