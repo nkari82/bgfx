@@ -207,7 +207,7 @@ public:
 
 						if (NULL != win.m_nwh)
 						{
-							m_fbh[viewId] = bgfx::createFrameBuffer(win.m_nwh, uint16_t(win.m_width), uint16_t(win.m_height) );
+							m_fbh[viewId] = bgfx::createFrameBuffer(win.m_nwh, NULL, uint16_t(win.m_width), uint16_t(win.m_height) );
 						}
 						else
 						{
